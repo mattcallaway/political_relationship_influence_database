@@ -1,93 +1,65 @@
-# Workbook Migration Report & Schema Audit (v5)
+# Workbook Migration Report & Schema Audit (v5 Consolidated)
 **Application**: Sonoma Political Relationship and Influence Database  
-**Seed File**: `data/imports/Sonoma_Political_Influence_Database_v5_consolidated.xlsx`  
+**Primary Seed File**: `data/imports/Sonoma_Political_Influence_Database_v5_consolidated.xlsx` (Ingested from `D:\Downloads\Sonoma County Political Influence Database.xlsx`)  
 **Audit Date**: June 2026  
 
 ---
 
 ## 1. Executive Summary
-This document provides a comprehensive audit of the seed dataset `Sonoma_Political_Influence_Database_v5_consolidated.xlsx` for the Sonoma Political Relationship and Influence Database. The seed workbook consolidates documented public records, entities, campaign disclosures, assertions, and research workflows in Sonoma County, California.
+This document provides an audit of the authentic seed dataset `Sonoma County Political Influence Database.xlsx` (243 KB, 29 sheets) for the Sonoma Political Relationship and Influence Database. The workbook consolidates years of civic research in Sonoma County, California—spanning public officials, political consultants, land developers, campaign committees, FPPC Form 460 contributions and expenditures, public record requests (PRA), assertions, and research workflows.
 
-The migration strategy ensures **zero silent data loss**, complete **provenance preservation**, and an auditable mapping from legacy spreadsheet identifiers to the normalized PostgreSQL multi-app Django schema.
-
----
-
-## 2. Inventory of Workbook Sheets & Column Structures
-
-### 2.1 `Controlled_Vocabularies`
-* **Purpose**: Defines standardized codes and taxonomies for entity classification, relationship types, claim categories, and source reliability.
-* **Columns (5)**: `Vocabulary_Category`, `Code`, `Label`, `Description`, `Is_Active`
-* **Total Records**: 16
-* **Migration Target**: `apps.audit.models.ControlledVocabularyValue`
-
-### 2.2 `Entities`
-* **Purpose**: Base table for all physical individuals and corporate/public organizations.
-* **Columns (5)**: `Legacy_ID`, `Canonical_Name`, `Entity_Type`, `Status`, `Notes`
-* **Total Records**: 6
-* **Migration Target**: `apps.entities.models.Entity` (base model with UUID primary key and readable `public_id`).
-
-### 2.3 `Persons`
-* **Purpose**: Specific details for physical human beings in the public domain.
-* **Columns (7)**: `Legacy_ID`, `Full_Name`, `First_Name`, `Last_Name`, `Occupation`, `Public_Role`, `Jurisdiction`
-* **Total Records**: 2
-* **Migration Target**: `apps.entities.models.Person` (1-to-1 extension of `Entity`).
-
-### 2.4 `Organizations`
-* **Purpose**: Legal entities, committees, developer corporations, government agencies, and lobbying firms.
-* **Columns (6)**: `Legacy_ID`, `Legal_Name`, `Common_Name`, `Org_Category`, `Committee_ID`, `Jurisdiction`
-* **Total Records**: 4
-* **Migration Target**: `apps.entities.models.Organization` (1-to-1 extension of `Entity`).
-
-### 2.5 `Sources`
-* **Purpose**: Primary evidentiary documents and filings supporting all factual claims.
-* **Columns (7)**: `Legacy_Source_ID`, `Title`, `Source_Type`, `Publisher`, `Filing_Date`, `URL`, `Reliability`
-* **Total Records**: 2
-* **Migration Target**: `apps.sources.models.Source` and `apps.documents.models.Document`.
-
-### 2.6 `Assertions`
-* **Purpose**: Documented factual claims, relationships, and roles connecting entities.
-* **Columns (9)**: `Legacy_Assertion_ID`, `Subject_Legacy_ID`, `Predicate`, `Object_Legacy_ID`, `Literal_Value`, `Claim_Type`, `Confidence`, `Source_Legacy_ID`, `Source_Page`
-* **Total Records**: 2
-* **Migration Target**: `apps.assertions.models.Assertion` & `apps.assertions.models.AssertionSource`.
-
-### 2.7 `Contributions`
-* **Purpose**: Campaign contributions extracted from Form 460 Schedule A filings.
-* **Columns (10)**: `Legacy_Trans_ID`, `Filer_Committee_ID`, `Donor_Legacy_ID`, `Donor_Raw_Name`, `Transaction_Date`, `Amount`, `Schedule`, `Source_Legacy_ID`, `Source_Page`, `Review_Status`
-* **Total Records**: 1
-* **Migration Target**: `apps.transactions.models.Contribution`.
-
-### 2.8 `Expenditures`
-* **Purpose**: Campaign expenditures extracted from Form 460 Schedule E filings.
-* **Columns (11)**: `Legacy_Trans_ID`, `Filer_Committee_ID`, `Payee_Legacy_ID`, `Payee_Raw_Name`, `Transaction_Date`, `Amount`, `Description`, `Schedule`, `Source_Legacy_ID`, `Source_Page`, `Review_Status`
-* **Total Records**: 1
-* **Migration Target**: `apps.transactions.models.Expenditure`.
-
-### 2.9 `Research_Workflow`
-* **Purpose**: Research tracking tasks, pending verifications, and investigation logs.
-* **Columns (6)**: `Legacy_Task_ID`, `Task_Title`, `Assigned_Researcher`, `Priority`, `Status`, `Notes`
-* **Total Records**: 1
-* **Migration Target**: `apps.research.models.ResearchTask`.
-
-### 2.10 `Legacy_ID_Mappings`
-* **Purpose**: Cross-walk mapping table connecting legacy workbook IDs to system target models.
-* **Columns (4)**: `Legacy_ID`, `Source_Sheet`, `Target_Model`, `System_Public_ID_Prefix`
-* **Total Records**: 12
-* **Migration Target**: `apps.audit.models.LegacyIdentifier`.
+The migration strategy ensures **zero silent data loss**, complete **provenance preservation**, and an auditable mapping from legacy spreadsheet identifiers (`P000001`, `ORG000001`, `SRC000001`, `AST000001`, `CON000001`, `EXP000001`, `LEG...`) to the normalized PostgreSQL multi-app Django schema.
 
 ---
 
-## 3. Controlled Vocabularies & Taxonomies Seeded
+## 2. Complete Inventory of Workbook Sheets (29 Total)
 
-1. **Entity Types**: `PERSON`, `ORGANIZATION`
-2. **Organization Categories**: `CAMPAIGN_COMMITTEE`, `DEVELOPER_CORP`, `GOVT_AGENCY`, `LOBBYING_FIRM`
-3. **Source Types**: `FORM_460`, `MEETING_MINUTES`, `STAFF_REPORT`
-4. **Claim Types**: `FACTUAL`, `INTERPRETIVE`, `ALLEGATION`, `HYPOTHESIS`
-5. **Predicates**: `CONTRIBUTED_TO`, `EMPLOYED_BY`, `REPRESENTED_CLIENT`, `VOTED_FOR`
-6. **Review Statuses**: `PROPOSED`, `APPROVED`, `CORRECTED`, `REJECTED`
+| Sheet Name | Purpose & Description | Migration Target Model | Key Columns / Identifier |
+| :--- | :--- | :--- | :--- |
+| **`Dashboard`** | High-level research summary metrics and entity highlights | Analytical view / UI Dashboard | N/A |
+| **`Entity_Index`** | Canonical master directory of all entities | `apps.entities.models.Entity` | `EntityID`, `CanonicalName`, `EntityType` |
+| **`People`** | Physical individuals (officials, consultants, donors) | `apps.entities.models.Person` | `PersonID` (1:1 with `EntityID`), `FullName` |
+| **`Organizations`** | Corporations, PACs, lobbying firms, public bodies | `apps.entities.models.Organization` | `OrganizationID`, `LegalName`, `CommitteeID` |
+| **`Aliases`** | Alternate names, DBAs, and former committee names | `apps.entities.models.Alias` | `AliasID`, `EntityID`, `AliasText` |
+| **`Campaigns`** | Candidate and ballot measure campaign cycles | `apps.campaigns.models.Campaign` | `CampaignID`, `CampaignName`, `Year` |
+| **`Committees`** | FPPC candidate/PAC committees | `apps.campaigns.models.Committee` | `CommitteeID`, `FPPC_ID`, `CommitteeName` |
+| **`Projects`** | Land development, zoning, and municipal projects | `apps.projects.models.Project` | `ProjectID`, `ProjectName`, `Jurisdiction` |
+| **`Public_Offices`** | Elected and appointed public seats | `apps.government.models.PublicOffice` | `OfficeID`, `OfficeName`, `Jurisdiction` |
+| **`Government_Bodies`** | County boards, city councils, commissions | `apps.government.models.GovernmentBody` | `BodyID`, `BodyName`, `Jurisdiction` |
+| **`Sources`** | Form 460 disclosures, minutes, news, PRAs | `apps.sources.models.Source` & `Document` | `SourceID`, `Title`, `SourceType`, `URL` |
+| **`Assertions`** | Factual claims, roles, and connections | `apps.assertions.models.Assertion` | `AssertionID`, `SubjectEntityID`, `PredicateCode` |
+| **`Assertion_Sources`**| Specific page and locator evidence citations | `apps.assertions.models.AssertionSource` | `AssertionID`, `SourceID`, `DocumentPage` |
+| **`Contributions`** | Form 460 Schedule A campaign contributions | `apps.transactions.models.Contribution` | `ContributionID`, `FilerCommitteeID`, `Amount` |
+| **`Expenditures`** | Form 460 Schedule E campaign expenditures | `apps.transactions.models.Expenditure` | `ExpenditureID`, `FilerCommitteeID`, `Amount` |
+| **`Appointments`** | Public board and commission appointments | `apps.government.models.Appointment` | `AppointmentID`, `PersonID`, `BodyID` |
+| **`Contracts`** | Public agency contracts and consulting agreements | `apps.transactions.models.Contract` | `ContractID`, `AgencyID`, `VendorID` |
+| **`Events`** | Public meetings, forums, fundraisers | `apps.government.models.Event` | `EventID`, `EventName`, `EventDate` |
+| **`Research_Queue`** | Open investigative leads and tasks | `apps.research.models.ResearchTask` | `TaskID`, `TaskTitle`, `Status` |
+| **`Entity_Match_Queue`**| Potential fuzzy duplicate entity matches | `apps.research.models.EntityMatchCandidate` | `CandidateID`, `EntityID1`, `EntityID2` |
+| **`PRA_Requests`** | Public Records Act request tracking | `apps.research.models.PRARequest` | `PRA_ID`, `AgencyID`, `RequestSummary` |
+| **`Change_Log`** | Auditable log of workbook revisions | `apps.audit.models.ChangeLog` | `ChangeID`, `Timestamp`, `TableName` |
+| **`Reference_Data`** | Controlled vocabularies and taxonomies | `apps.audit.models.ControlledVocabularyValue`| `ListName`, `Code`, `Label` |
+| **`Predicate_Vocabulary`**| Controlled relationship codes & inverse rules | `apps.audit.models.ControlledVocabularyValue`| `PredicateCode`, `Label`, `Category` |
+| **`Inbox_Intake`** | Staging area for raw submitted documents | `apps.research.models.IntakeItem` | `IntakeID`, `URLorFile`, `ItemType` |
+| **`Import_Templates`**| Required/recommended field mapping templates | Reference guide / Management Command | `TemplateName`, `RequiredFields` |
+| **`Methodology`** | Research standards and evidentiary rules | System documentation | Principle, Standard |
+| **`Legacy_ID_Map`** | Crosswalk mapping from v3/v4 to current IDs | `apps.audit.models.LegacyIdentifier` | `LegacyID`, `CurrentID`, `MigrationNotes` |
+| **`Research_Locations`**| Repositories, agency clerks, and filing portals | `apps.research.models.ResearchLocation` | `LocationID`, `Repository`, `Jurisdiction` |
 
 ---
 
-## 4. Migration Strategy & ID Resolution Rules
-- **Idempotency**: Implemented via `python manage.py import_v5_workbook --dry-run`.
-- **Public ID Assignment**: Internal UUIDs are primary keys. Public human-readable IDs (`P000001`, `ORG000001`, `SRC000001`, `AST000001`, `CON000001`, `EXP000001`) are assigned upon approval.
-- **Ambiguity Handling**: Raw strings (e.g., `Donor_Raw_Name`) are preserved in extraction staging models. Unmatched entities require manual reviewer approval before canonical entity resolution.
+## 3. Controlled Vocabularies & Taxonomies Seeded from Workbook
+
+1. **Entity Types** (`Reference_Data`): `PERSON`, `ORGANIZATION`, `CAMPAIGN`, `PROJECT`, `COMMITTEE`, `GOVERNMENT_BODY`
+2. **Predicates** (`Predicate_Vocabulary`): `principal_of`, `employee_of`, `consultant_to`, `contributed_to`, `voted_for`, `represented_client`, `appointed_to`, `candidate_for`, `associated_with`, `possible_involvement_in`, `worked_to_pass`
+3. **Source Types**: `FORM_460`, `MEETING_MINUTES`, `STAFF_REPORT`, `LOBBYING_DISCLOSURE`, `CONTRACT`, `PRA_RESPONSE`, `NEWS_ARTICLE`
+4. **Claim Types**: `FACTUAL`, `INTERPRETIVE`, `ALLEGATION`, `HYPOTHESIS`, `CONTEXT`
+
+---
+
+## 4. Migration Strategy & Repeatable Management Command
+The management command `python manage.py import_v5_workbook` will:
+1. Wrap all imports in database transactions per sheet.
+2. Maintain idempotency by checking `LegacyIdentifier` and public IDs (`P000001`, `ORG000001`, etc.).
+3. Store raw unparsed strings in `ImportRow` staging for any non-conforming rows.
+4. Report detailed row-level summary counts and log warnings without discarding data.
