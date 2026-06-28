@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sonoma Political Relationship and Influence Database{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <header>
+        <a href="/" class="brand">Sonoma Civic Research Platform</a>
+        <nav>
+            <a href="/" class="{% if request.path == '/' %}active{% endif %}">Entities</a>
+            <a href="/documents/" class="{% if '/documents/' in request.path %}active{% endif %}">Document Queue</a>
+            <a href="/assertions/" class="{% if '/assertions/' in request.path %}active{% endif %}">Assertions</a>
+            <a href="/transactions/" class="{% if '/transactions/' in request.path %}active{% endif %}">Transactions</a>
+            <a href="/research/" class="{% if '/research/' in request.path %}active{% endif %}">Research Dashboard</a>
+            <a href="/exports/" class="{% if '/exports/' in request.path %}active{% endif %}">Exports</a>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>Sonoma Political Relationship and Influence Database &bull; Open, Auditable Civic Research Platform</p>
+        <p><small>Evidence-centered research: Documented association does not inherently demonstrate wrongdoing or impropriety.</small></p>
+    </footer>
+</body>
+</html>

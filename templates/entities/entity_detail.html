@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ entity.canonical_name }} - Profile{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem;">
+    <a href="/" class="btn btn-secondary" style="font-size:0.85rem;">&larr; Back to Entities Index</a>
+</div>
+
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+            <h2>{{ entity.canonical_name }}</h2>
+            <p style="color:var(--text-muted); margin-top:0.25rem;">Public ID: <strong>{{ entity.public_id }}</strong> &bull; Type: {{ entity.entity_type }}</p>
+        </div>
+        <span class="badge badge-approved">{{ entity.status }}</span>
+    </div>
+    
+    {% if person %}
+    <hr style="border-color:var(--border-color); margin:1rem 0;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+        <div><strong>Display Name:</strong> {{ person.display_name }}</div>
+        <div><strong>Public Role:</strong> {{ person.public_role|default:"N/A" }}</div>
+        <div><strong>Occupation:</strong> {{ person.occupation|default:"N/A" }}</div>
+        <div><strong>Jurisdiction:</strong> {{ person.jurisdiction }}</div>
+    </div>
+    {% endif %}
+
+    {% if org %}
+    <hr style="border-color:var(--border-color); margin:1rem 0;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+        <div><strong>Legal Name:</strong> {{ org.legal_name }}</div>
+        <div><strong>Committee ID (FPPC):</strong> {{ org.committee_id|default:"N/A" }}</div>
+        <div><strong>Category:</strong> {{ org.org_category }}</div>
+        <div><strong>Jurisdiction:</strong> {{ org.jurisdiction }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
+    <div class="card">
+        <h3>Evidentiary Assertions</h3>
+        <ul style="list-style:none; margin-top:1rem;">
+            {% for ast in subject_assertions %}
+            <li style="padding:0.75rem 0; border-bottom:1px solid var(--border-color);">
+                <span class="badge badge-verified">{{ ast.claim_type }}</span>
+                <strong>[{{ ast.predicate }}]</strong>
+                {% if ast.object_entity %}{{ ast.object_entity.canonical_name }}{% else %}{{ ast.object_value }}{% endif %}
+                <br><small style="color:var(--text-muted);">Status: {{ ast.verification_status }} &bull; Effective: {{ ast.effective_start|default:"N/A" }}</small>
+            </li>
+            {% empty %}
+            <li style="color:var(--text-muted); padding:0.5rem 0;">No subject assertions registered.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="card">
+        <h3>Campaign Finance Transactions</h3>
+        <ul style="list-style:none; margin-top:1rem;">
+            {% for contrib in contributions_made %}
+            <li style="padding:0.75rem 0; border-bottom:1px solid var(--border-color);">
+                <strong style="color:var(--accent-emerald);">${{ contrib.amount }}</strong> contributed to <strong>{{ contrib.filer_committee.canonical_name }}</strong>
+                <br><small style="color:var(--text-muted);">Date: {{ contrib.transaction_date|default:"Unspecified" }} &bull; Schedule: {{ contrib.schedule }}</small>
+            </li>
+            {% empty %}
+            <li style="color:var(--text-muted); padding:0.5rem 0;">No documented financial transactions.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Data & Network Exporters - Sonoma Research Platform{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem;">
+    <h2>Research Dataset & Network Exporters</h2>
+    <p style="color:var(--text-muted);">Export authoritative database records and evidentiary networks for spreadsheets, PostgreSQL, and network-analysis software (e.g. Gephi).</p>
+</div>
+
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem;">
+    <div class="card">
+        <h3>Canonical Entities CSV</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin:0.5rem 0 1rem 0;">Download complete canonical entities directory with readable public IDs and verification statuses.</p>
+        <a href="/exports/?format=csv" class="btn">Download CSV Table</a>
+    </div>
+
+    <div class="card">
+        <h3>Gephi Network GraphML</h3>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin:0.5rem 0 1rem 0;">Export directed node-and-edge graph structure linking entities via documented predicates and assertions.</p>
+        <a href="/exports/?format=graphml" class="btn btn-secondary">Download GraphML File</a>
+    </div>
+</div>
+{% endblock %}
