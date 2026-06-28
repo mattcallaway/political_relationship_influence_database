@@ -3,12 +3,22 @@
 {% block title %}Document Ingestion Queue - Sonoma Research Platform{% endblock %}
 
 {% block content %}
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+<div style="margin-bottom:1.5rem;">
     <h2>Document Ingestion Queue</h2>
-    <button class="btn" onclick="alert('File upload endpoint ready. Select a born-digital or scanned Form 460 PDF.');">Upload New Document</button>
+    <p style="color:var(--text-muted);">Upload born-digital or scanned Form 460 disclosures, staff reports, or public record documents for automated text extraction, SHA-256 provenance hashing, and verification review.</p>
+</div>
+
+<div class="card" style="margin-bottom:2rem; background:rgba(30, 41, 59, 0.9);">
+    <h3 style="margin-bottom:1rem;">Upload New Document</h3>
+    <form action="/documents/upload/" method="post" enctype="multipart/form-data" style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+        {% csrf_token %}
+        <input type="file" name="document_file" accept=".pdf,.png,.jpg,.jpeg" required style="padding:0.5rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; flex:1; min-width:250px;">
+        <button type="submit" class="btn">Upload & Extract Document</button>
+    </form>
 </div>
 
 <div class="card">
+    <h3 style="margin-bottom:1rem;">Ingested Documents</h3>
     <table>
         <thead>
             <tr>
@@ -16,7 +26,7 @@
                 <th>SHA-256 Hash</th>
                 <th>Pages</th>
                 <th>Processing Status</th>
-                <th>OCR Status</th>
+                <th>Text Extraction</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -26,13 +36,13 @@
                 <td><strong>{{ doc.original_filename }}</strong></td>
                 <td><code>{{ doc.sha256_hash|slice:":12" }}...</code></td>
                 <td>{{ doc.page_count }}</td>
-                <td><span class="badge badge-proposed">{{ doc.processing_status }}</span></td>
-                <td>{% if doc.ocr_applied %}<span class="badge badge-verified">OCR Applied</span>{% else %}<span class="badge badge-proposed">Native Text</span>{% endif %}</td>
+                <td><span class="badge badge-approved">{{ doc.processing_status }}</span></td>
+                <td>{% if doc.has_native_text %}<span class="badge badge-verified">Native Text</span>{% else %}<span class="badge badge-proposed">OCR Processed</span>{% endif %}</td>
                 <td><a href="/extraction/review/{{ doc.id }}/" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.6rem;">Review Side-by-Side</a></td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" style="text-align:center; color:var(--text-muted);">No documents currently in queue. Upload a Form 460 PDF to initiate extraction.</td>
+                <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">No documents currently in queue. Select a file above to begin ingestion.</td>
             </tr>
             {% endfor %}
         </tbody>
