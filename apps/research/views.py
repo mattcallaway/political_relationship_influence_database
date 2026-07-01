@@ -379,17 +379,56 @@ def collection_detail(request, collection_id):
                 'type': 'Expenditure',
                 'description': f"${e.amount} paid to {e.payee_raw_name} by {e.filer_committee.canonical_name}"
             })
+    # Reconstruct timeline sorting
     import datetime
     timeline.sort(key=lambda x: x['date'] or datetime.date.today(), reverse=True)
     
+    # Reconstruct meetings, campaigns, committees
+    meetings = Meeting.objects.filter(agenda_items__related_project__in=entities).distinct()
+    campaigns = Campaign.objects.filter(committee__in=entities).distinct()
+    committees = Committee.objects.filter(entity__in=entities).distinct()
+    people = entities.filter(entity_type='PERSON')
+    organizations = entities.filter(entity_type='ORGANIZATION')
+    
+    # Cytoscape Graph Generation
+    import json
+    nodes = []
+    for ent in entities:
+        nodes.append({
+            'data': {
+                'id': ent.public_id,
+                'label': ent.canonical_name,
+                'type': ent.entity_type,
+                'status': ent.status
+            }
+        })
+    edges = []
+    for ast in assertions:
+        if ast.object_entity:
+            edges.append({
+                'data': {
+                    'id': ast.public_id,
+                    'source': ast.subject_entity.public_id,
+                    'target': ast.object_entity.public_id,
+                    'label': ast.predicate,
+                    'claim_type': ast.claim_type,
+                    'status': ast.verification_status
+                }
+            })
+    elements = nodes + edges
+
     return render(request, 'research/collection_detail.html', {
         'collection': collection,
         'entities': entities,
+        'people': people,
+        'organizations': organizations,
+        'campaigns': campaigns,
+        'committees': committees,
         'assertions': assertions,
         'sources': collection.sources.all(),
         'contributions': contributions,
         'expenditures': expenditures,
-        'tasks': collection.tasks.all(),
+        'tasks': collection.tasks.all().order_by('-created_at'),
         'questions': collection.questions.all(),
         'pra_requests': collection.pra_requests.all(),
         'total_contributions_volume': float(total_contributions_volume),
@@ -401,8 +440,10 @@ def collection_detail(request, collection_id):
         'lobbying_activities': lobbying_activities,
         'votes': votes,
         'projects': projects,
+        'meetings': meetings,
         'dq_issues': dq_issues,
-        'timeline': timeline[:30]
+        'timeline': timeline[:50],
+        'collection_elements_json': json.dumps(elements)
     })
 
 def network_explorer(request):
@@ -509,3 +550,71 @@ def download_inventory(request):
         response['Content-Disposition'] = 'attachment; filename="database_inventory.json"'
         
     return response
+
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404, redirect
+from apps.research.models import ResearchCollection, ResearchTask, OpenQuestion
+from apps.entities.models import Entity
+from apps.sources.models import Source
+from apps.assertions.models import Assertion
+from django.contrib import messages
+import random
+
+@require_POST
+def add_to_collection(request, collection_id):
+    collection = get_object_or_404(ResearchCollection, id=collection_id)
+    item_type = request.POST.get('item_type')
+    item_id = request.POST.get('item_id')
+    
+    if item_type == 'entity':
+        entity = get_object_or_404(Entity, id=item_id)
+        collection.entities.add(entity)
+        messages.success(request, f"Added entity '{entity.canonical_name}' to collection '{collection.name}'")
+    elif item_type == 'source':
+        source = get_object_or_404(Source, id=item_id)
+        collection.sources.add(source)
+        messages.success(request, f"Added source '{source.title}' to collection '{collection.name}'")
+    elif item_type == 'assertion':
+        assertion = get_object_or_404(Assertion, id=item_id)
+        collection.assertions.add(assertion)
+        messages.success(request, f"Added assertion '{assertion.public_id}' to collection '{collection.name}'")
+        
+    return redirect('collection_detail', collection_id=collection.id)
+
+@require_POST
+def create_collection_task(request, collection_id):
+    collection = get_object_or_404(ResearchCollection, id=collection_id)
+    title = request.POST.get('task_title')
+    priority = request.POST.get('priority', 'MEDIUM')
+    notes = request.POST.get('notes', '')
+    
+    if title:
+        task = ResearchTask.objects.create(
+            public_id=f"TSK{random.randint(100000, 999999)}",
+            task_title=title,
+            priority=priority,
+            notes=notes,
+            collection=collection,
+            assigned_researcher=request.user if request.user.is_authenticated else None
+        )
+        messages.success(request, f"Created task '{title}' in collection '{collection.name}'")
+    else:
+        messages.error(request, "Task title is required")
+        
+    return redirect('collection_detail', collection_id=collection.id)
+
+@require_POST
+def create_collection_question(request, collection_id):
+    collection = get_object_or_404(ResearchCollection, id=collection_id)
+    text = request.POST.get('question_text')
+    
+    if text:
+        question = OpenQuestion.objects.create(
+            question_text=text,
+            collection=collection
+        )
+        messages.success(request, f"Logged question in collection '{collection.name}'")
+    else:
+        messages.error(request, "Question text is required")
+        
+    return redirect('collection_detail', collection_id=collection.id)

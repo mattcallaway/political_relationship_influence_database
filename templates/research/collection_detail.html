@@ -3,22 +3,32 @@
 {% block title %}{{ collection.name }} - Collection Workspace{% endblock %}
 
 {% block content %}
+<!-- Back Navigation & Quick Actions -->
 <div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
     <a href="/research/collections/" class="btn btn-secondary" style="font-size:0.85rem;">&larr; Back to Collections</a>
-    <div style="display:flex; gap:0.5rem;">
-        <button class="btn btn-secondary" style="font-size:0.8rem;">Add Entities</button>
-        <button class="btn btn-secondary" style="font-size:0.8rem;">Pin Documents</button>
-        <button class="btn" style="font-size:0.8rem;">New Task</button>
+    
+    <!-- Add Items to Collection Panel -->
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; background:rgba(255,255,255,0.02); padding:0.5rem; border-radius:8px; border:1px solid var(--border-color);">
+        <form method="post" action="{% url 'add_to_collection' collection.id %}" style="display:inline-flex; gap:0.25rem; margin:0; align-items:center;">
+            {% csrf_token %}
+            <select name="item_type" style="font-size:0.75rem; padding:0.25rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; cursor:pointer;">
+                <option value="entity">Entity ID</option>
+                <option value="source">Source ID</option>
+                <option value="assertion">Assertion ID</option>
+            </select>
+            <input type="text" name="item_id" placeholder="Enter UUID" required style="padding:0.25rem 0.5rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.75rem; width:180px;">
+            <button type="submit" class="btn" style="font-size:0.75rem; padding:0.25rem 0.5rem;">Add to Collection</button>
+        </form>
     </div>
 </div>
 
 <!-- Collection Header -->
 <div class="card" style="padding:2rem; margin-bottom:2rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(15, 23, 42, 0.9) 100%); border-left:4px solid var(--accent-emerald);">
-    <h2 style="font-family:'Outfit', sans-serif; font-size:2rem; font-weight:700; color:#fff; margin-bottom:0.5rem;">{{ collection.name }}</h2>
+    <h2 style="font-family:'Outfit', sans-serif; font-size:2.2rem; font-weight:700; color:#fff; margin-bottom:0.5rem;">{{ collection.name }}</h2>
     <p style="color:#cbd5e1; font-size:1rem; line-height:1.5;">{{ collection.description }}</p>
 </div>
 
-<!-- Collection Dashboard Metrics -->
+<!-- Metrics Dashboard -->
 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
     <div class="card">
         <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Tracked Entities</span>
@@ -33,8 +43,8 @@
     </div>
 
     <div class="card">
-        <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Relations & Actions</span>
-        <strong style="font-size:2rem; color:#fff; display:block;">{{ assertions.count }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Lobbying & Contracts</span>
+        <strong style="font-size:2rem; color:#fff; display:block;">{{ lobbying_activities.count|add:contracts.count }}</strong>
         <span style="font-size:0.75rem; color:var(--text-muted);">{{ lobbying_activities.count }} lobbying &bull; {{ contracts.count }} contracts</span>
     </div>
 
@@ -45,101 +55,379 @@
     </div>
 </div>
 
-<!-- Relationship Highlight Grid -->
-<div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; margin-bottom:2rem; align-items:flex-start;">
-    <!-- Collection Entities -->
-    <div class="card">
-        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Tracked Entities ({{ entities|length }})</h3>
-        <table style="width:100%;">
-            <thead>
-                <tr>
-                    <th>Canonical Name</th>
-                    <th>Type</th>
-                    <th>Jurisdiction</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for ent in entities %}
-                <tr>
-                    <td><a href="/entity/{{ ent.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ ent.canonical_name }}</a></td>
-                    <td><span class="badge" style="background:#1e293b; color:#fff;">{{ ent.entity_type }}</span></td>
-                    <td>{{ ent.jurisdiction }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No entities pinned to this collection.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<!-- Tab Navigation -->
+<div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem;">
+    <button class="btn btn-primary" onclick="showColTab(event, 'tab-overview')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Workspace Overview</button>
+    <button class="btn btn-secondary" onclick="showColTab(event, 'tab-timeline')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Collection Timeline ({{ timeline|length }})</button>
+    <button class="btn btn-secondary" onclick="showColTab(event, 'tab-network')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Network Graph</button>
+    <button class="btn btn-secondary" onclick="showColTab(event, 'tab-gaps')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Tasks & Gaps ({{ tasks|length|add:questions.count }})</button>
+</div>
 
-    <!-- Direct Connections -->
-    <div class="card">
-        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Intra-Collection Connections</h3>
-        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Evidentiary assertions where both subject and object exist within this collection.</p>
-        <ul style="padding-left:1.25rem; font-size:0.9rem; display:flex; flex-direction:column; gap:0.5rem;">
-            {% for ast in assertions %}
-            <li>
-                <strong>{{ ast.subject_entity.canonical_name }}</strong>
-                <code style="color:var(--accent-emerald);">{{ ast.predicate }}</code>
-                <strong>{{ ast.object_entity.canonical_name }}</strong>
-            </li>
-            {% empty %}
-            <li style="color:var(--text-muted); list-style:none; padding-left:0;">No direct relationships between collection members documented yet.</li>
-            {% endfor %}
-        </ul>
+<!-- TAB 1: WORKSPACE OVERVIEW -->
+<div id="tab-overview" class="col-tab-content" style="display:block;">
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; align-items:flex-start;">
+        <!-- Left Column: Entities & Connections -->
+        <div style="display:flex; flex-direction:column; gap:1.5rem;">
+            <!-- Pinned People -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Tracked People ({{ people|length }})</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Jurisdiction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ent in people %}
+                        <tr>
+                            <td><a href="/entity/{{ ent.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ ent.canonical_name }}</a></td>
+                            <td>
+                                <span class="badge {% if ent.status == 'VERIFIED' %}badge-approved{% else %}badge-proposed{% endif %}">
+                                    {{ ent.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ ent.jurisdiction }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No people tracked in this collection.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pinned Organizations -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Tracked Organizations ({{ organizations|length }})</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Organization Name</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ent in organizations %}
+                        <tr>
+                            <td><a href="/entity/{{ ent.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ ent.canonical_name }}</a></td>
+                            <td>
+                                <span class="badge {% if ent.status == 'VERIFIED' %}badge-approved{% else %}badge-proposed{% endif %}">
+                                    {{ ent.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No organizations tracked in this collection.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Campaigns & Committees -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Campaigns & Committees</h3>
+                {% if campaigns or committees %}
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Campaign / Committee</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in campaigns %}
+                        <tr>
+                            <td><strong>{{ c.campaign_name }}</strong></td>
+                            <td>Campaign</td>
+                        </tr>
+                        {% endfor %}
+                        {% for comm in committees %}
+                        <tr>
+                            <td><a href="/entity/{{ comm.entity.public_id }}/" style="color:var(--accent-blue);">{{ comm.canonical_name }}</a></td>
+                            <td>Committee (FPPC ID: {{ comm.fppc_id|default:"N/A" }})</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="border: 1px dashed var(--border-color); text-align:center; padding:1.5rem; background:rgba(255,255,255,0.01); border-radius:6px;">
+                    <h4 style="color:var(--text-muted); font-size:0.9rem; margin:0 0 0.25rem 0;">No campaigns or committees registered.</h4>
+                    <span style="font-size:0.75rem; color:var(--accent-amber);">Research Gap</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Public Contracts -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Public Contracts</h3>
+                {% if contracts %}
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Contract ID</th>
+                            <th>Vendor</th>
+                            <th>Agency</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contract in contracts %}
+                        <tr>
+                            <td><strong style="font-family:monospace;">{{ contract.public_id }}</strong></td>
+                            <td><a href="/entity/{{ contract.vendor_entity.public_id }}/">{{ contract.vendor_entity.canonical_name }}</a></td>
+                            <td><a href="/entity/{{ contract.agency_entity.public_id }}/">{{ contract.agency_entity.canonical_name }}</a></td>
+                            <td style="font-family:monospace; color:var(--accent-emerald); font-weight:bold;">${{ contract.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="border: 1px dashed var(--border-color); text-align:center; padding:1.5rem; background:rgba(255,255,255,0.01); border-radius:6px;">
+                    <h4 style="color:var(--text-muted); font-size:0.9rem; margin:0 0 0.25rem 0;">No public contracts recorded.</h4>
+                    <span style="font-size:0.75rem; color:var(--accent-amber);">Research Gap</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Lobbying Activities -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Lobbying Activities</h3>
+                {% if lobbying_activities %}
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Lobbyist Firm</th>
+                            <th>Client</th>
+                            <th>Target Agency</th>
+                            <th>Matters</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in lobbying_activities %}
+                        <tr>
+                            <td><a href="/entity/{{ activity.lobbyist_entity.public_id }}/">{{ activity.lobbyist_entity.canonical_name }}</a></td>
+                            <td><a href="/entity/{{ activity.client_entity.public_id }}/">{{ activity.client_entity.canonical_name }}</a></td>
+                            <td>{{ activity.agency_entity.canonical_name|default:"-" }}</td>
+                            <td>{{ activity.matters_described|truncatechars:50 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="border: 1px dashed var(--border-color); text-align:center; padding:1.5rem; background:rgba(255,255,255,0.01); border-radius:6px;">
+                    <h4 style="color:var(--text-muted); font-size:0.9rem; margin:0 0 0.25rem 0;">No lobbying activities registered.</h4>
+                    <span style="font-size:0.75rem; color:var(--accent-amber);">Research Gap</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Public Meetings & Votes -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Meetings & Roll-Call Votes</h3>
+                {% if meetings or votes %}
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Voter</th>
+                            <th>Date / Meeting</th>
+                            <th>Matter / Vote</th>
+                            <th>Outcome</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vote in votes %}
+                        <tr>
+                            <td><a href="/entity/{{ vote.voter_person.public_id }}/">{{ vote.voter_person.canonical_name }}</a></td>
+                            <td style="font-family:monospace;">{{ vote.meeting_date|date:'Y-m-d' }}</td>
+                            <td><strong>{{ vote.item_title }}</strong>: <span class="badge" style="background:#1e293b;">{{ vote.vote_cast }}</span></td>
+                            <td>{{ vote.outcome }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="border: 1px dashed var(--border-color); text-align:center; padding:1.5rem; background:rgba(255,255,255,0.01); border-radius:6px;">
+                    <h4 style="color:var(--text-muted); font-size:0.9rem; margin:0 0 0.25rem 0;">No meetings or votes recorded.</h4>
+                    <span style="font-size:0.75rem; color:var(--accent-amber);">Research Gap</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column: Assertions & Sources -->
+        <div style="display:flex; flex-direction:column; gap:1.5rem;">
+            <!-- Direct Connections -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Verified Assertions</h3>
+                <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Evidentiary assertions connecting members of this collection.</p>
+                <ul style="padding-left:1.25rem; font-size:0.9rem; display:flex; flex-direction:column; gap:0.5rem;">
+                    {% for ast in assertions %}
+                    <li>
+                        <strong>{{ ast.subject_entity.canonical_name }}</strong>
+                        <code style="color:var(--accent-emerald);">{{ ast.predicate }}</code>
+                        <strong>{{ ast.object_entity.canonical_name }}</strong>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.1rem;">
+                            Type: {{ ast.claim_type }} &bull; Status: {{ ast.verification_status }}
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li style="color:var(--text-muted); list-style:none; padding-left:0;">No direct relationships recorded yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Documents & Sources -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Evidence Sources</h3>
+                <ul style="padding-left:1.25rem; font-size:0.9rem; display:flex; flex-direction:column; gap:0.5rem;">
+                    {% for src in sources %}
+                    <li>
+                        <strong style="color:var(--accent-blue);">{{ src.title }}</strong>
+                        <span style="font-size:0.75rem; color:var(--text-muted); display:block;">
+                            File: {{ src.filename }} &bull; Ingested: {{ src.created_at|date:"Y-m-d" }}
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li style="color:var(--text-muted); list-style:none; padding-left:0;">No source documents pinned yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Tasks and Questions Grid -->
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem; align-items:flex-start;">
-    <!-- Tasks -->
+<!-- TAB 2: TIMELINE -->
+<div id="tab-timeline" class="col-tab-content" style="display:none;">
     <div class="card">
-        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Collection Tasks</h3>
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Collection Chronology</h3>
+        <div style="position:relative; padding-left:1.5rem; border-left:2px solid var(--border-color); margin-top:1.5rem;">
+            {% for item in timeline %}
+            <div style="position:relative; margin-bottom:1.5rem;">
+                <div style="position:absolute; left:-1.9rem; top:0.25rem; width:10px; height:10px; border-radius:50%; background:var(--accent-blue);"></div>
+                <span style="font-family:monospace; font-weight:bold; color:var(--text-muted); font-size:0.85rem;">{{ item.date|date:'Y-m-d' }}</span>
+                <span class="badge" style="margin-left:0.5rem; font-size:0.75rem; background:#1e293b;">{{ item.type }}</span>
+                <p style="margin-top:0.25rem; font-size:0.95rem; color:#f1f5f9;">{{ item.description }}</p>
+            </div>
+            {% empty %}
+            <p style="color:var(--text-muted); text-align:center; padding:2rem 0;">No chronological events cataloged for this collection workspace.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- TAB 3: NETWORK GRAPH -->
+<div id="tab-network" class="col-tab-content" style="display:none;">
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Connection Graph Projection</h3>
+        <div id="col-cy" style="width:100%; height:500px; background:rgba(0,0,0,0.1); border-radius:6px; border:1px solid var(--border-color); margin-top:1rem;"></div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.75rem; text-align:center;">
+            Scroll to zoom. Drag nodes to explore relationships. Click nodes to see details.
+        </p>
+    </div>
+</div>
+
+<!-- TAB 4: TASKS & GAPS -->
+<div id="tab-gaps" class="col-tab-content" style="display:none;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; align-items:flex-start; margin-bottom:1.5rem;">
+        <!-- Open Tasks and Form -->
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Research Tasks</h3>
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>Task Title</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                    <tr>
+                        <td><strong>{{ task.task_title }}</strong></td>
+                        <td><span class="badge badge-proposed">{{ task.priority }}</span></td>
+                        <td><span class="badge badge-verified">{{ task.status }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No active tasks recorded.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <h4 style="margin-top:1.5rem; margin-bottom:0.5rem; color:#fff; font-size:0.95rem;">Add New Research Task</h4>
+            <form method="post" action="{% url 'create_collection_task' collection.id %}" style="display:flex; flex-direction:column; gap:0.5rem;">
+                {% csrf_token %}
+                <input type="text" name="task_title" placeholder="e.g. Audit FPPC ID matches for Organization" required style="padding:0.4rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.8rem;">
+                <select name="priority" style="padding:0.4rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.8rem;">
+                    <option value="LOW">Low Priority</option>
+                    <option value="MEDIUM" selected>Medium Priority</option>
+                    <option value="HIGH">High Priority</option>
+                </select>
+                <textarea name="notes" placeholder="Detailed notes..." style="padding:0.4rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.8rem; height:60px;"></textarea>
+                <button type="submit" class="btn" style="align-self:flex-start; font-size:0.8rem; padding:0.3rem 0.6rem;">Add Task</button>
+            </form>
+        </div>
+
+        <!-- Open Questions and Form -->
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Open Questions & Hypotheses</h3>
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>Inquiry Details</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for q in questions %}
+                    <tr>
+                        <td>{{ q.question_text }}</td>
+                        <td><span class="badge badge-proposed">{{ q.status }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No active questions logged.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <h4 style="margin-top:1.5rem; margin-bottom:0.5rem; color:#fff; font-size:0.95rem;">Log New Research Question</h4>
+            <form method="post" action="{% url 'create_collection_question' collection.id %}" style="display:flex; flex-direction:column; gap:0.5rem;">
+                {% csrf_token %}
+                <input type="text" name="question_text" placeholder="e.g. Did the consultant meet with Supervisor X before the vote?" required style="padding:0.4rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.8rem;">
+                <button type="submit" class="btn" style="align-self:flex-start; font-size:0.8rem; padding:0.3rem 0.6rem;">Log Question</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Quality Dashboard -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Collection Diagnostics & Gaps</h3>
         <table style="width:100%;">
             <thead>
                 <tr>
-                    <th>Task Title</th>
-                    <th>Priority</th>
+                    <th>Diagnostic Check</th>
+                    <th>Affected Object</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                {% for task in tasks %}
+                {% for issue in dq_issues %}
                 <tr>
-                    <td><strong>{{ task.task_title }}</strong></td>
-                    <td><span class="badge badge-proposed">{{ task.priority }}</span></td>
-                    <td><span class="badge badge-verified">{{ task.status }}</span></td>
+                    <td><strong>{{ issue.issue_type }}</strong> - {{ issue.description }}</td>
+                    <td style="font-family:monospace; font-size:0.8rem;">{{ issue.affected_object_type }}:{{ issue.affected_object_id }}</td>
+                    <td><span class="badge badge-proposed">Active</span></td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No tasks created for this collection portfolio.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Questions -->
-    <div class="card">
-        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Open Questions</h3>
-        <table style="width:100%;">
-            <thead>
-                <tr>
-                    <th>Question Detail</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for q in questions %}
-                <tr>
-                    <td>{{ q.question_text }}</td>
-                    <td><span class="badge badge-proposed">{{ q.status }}</span></td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="2" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No open questions registered.</td>
+                    <td colspan="3" style="color:var(--accent-emerald); text-align:center; padding:1.5rem 0; font-weight:bold;">All diagnostic indicators passed. No data quality issues detected in this collection workspace!</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -147,32 +435,99 @@
     </div>
 </div>
 
-<!-- Public Records Campaign -->
-<div class="card">
-    <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Public Records Act (PRA) Campaign Requests</h3>
-    <table style="width:100%;">
-        <thead>
-            <tr>
-                <th>Tracking #</th>
-                <th>Target Agency</th>
-                <th>Request Summary</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pra in pra_requests %}
-            <tr>
-                <td style="font-family:monospace; font-weight:bold;">{{ pra.tracking_number|default:"-" }}</td>
-                <td><strong>{{ pra.target_agency }}</strong></td>
-                <td>{{ pra.request_summary }}</td>
-                <td><span class="badge badge-approved">{{ pra.status }}</span></td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No records requests tracked inside this collection workspace.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- Non-Pejorative Labeling Notice -->
+<div class="card" style="margin-top:2rem; padding:1.25rem; text-align:center; background:rgba(255,255,255,0.01); border:1px dashed var(--border-color);">
+    <p style="font-size:0.85rem; color:var(--text-muted); margin:0; font-style:italic;">
+        Notice: The existence of a political, financial, board, or chronological connection does not by itself demonstrate improper influence, coordination, conflict of interest, or wrongdoing. All connections must link directly to original source evidence.
+    </p>
 </div>
+
+<!-- Load Cytoscape CDN and Script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+<script>
+    function showColTab(evt, tabId) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("col-tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = evt.currentTarget.parentNode.getElementsByTagName("button");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("btn-primary");
+            tablinks[i].classList.add("btn-secondary");
+        }
+        document.getElementById(tabId).style.display = "block";
+        evt.currentTarget.classList.remove("btn-secondary");
+        evt.currentTarget.classList.add("btn-primary");
+        
+        // If Cytoscape tab is active, trigger layout resize
+        if (tabId === 'tab-network') {
+            setTimeout(initCytoscape, 100);
+        }
+    }
+
+    var cyInitialized = false;
+    function initCytoscape() {
+        if (cyInitialized) {
+            return;
+        }
+        var elements = {{ collection_elements_json|safe }};
+        if (elements.length === 0) {
+            document.getElementById("col-cy").innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top:200px;'>No graph nodes or assertions registered to display.</p>";
+            return;
+        }
+
+        var cy = cytoscape({
+            container: document.getElementById('col-cy'),
+            elements: elements,
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'background-color': function(ele) {
+                            var type = ele.data('type');
+                            if (type === 'PERSON') return '#3b82f6';
+                            if (type === 'COMMITTEE') return '#10b981';
+                            if (type === 'ORGANIZATION') return '#a78bfa';
+                            return '#6b7280';
+                        },
+                        'label': 'data(label)',
+                        'color': '#fff',
+                        'font-size': '11px',
+                        'text-valign': 'center',
+                        'text-halign': 'right',
+                        'width': '30px',
+                        'height': '30px',
+                        'border-width': '2px',
+                        'border-color': function(ele) {
+                            return ele.data('status') === 'VERIFIED' ? '#10b981' : '#f59e0b';
+                        }
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': '#475569',
+                        'target-arrow-color': '#475569',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
+                        'label': 'data(label)',
+                        'font-size': '9px',
+                        'color': '#cbd5e1',
+                        'text-background-opacity': 0.7,
+                        'text-background-color': '#0f172a',
+                        'text-background-padding': '2px',
+                        'text-background-shape': 'round'
+                    }
+                }
+            ],
+            layout: {
+                name: 'cose',
+                animate: false
+            }
+        });
+        cyInitialized = true;
+    }
+</script>
 {% endblock %}
