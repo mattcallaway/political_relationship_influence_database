@@ -103,6 +103,10 @@ def entity_detail(request, public_id):
     entity = get_object_or_404(Entity, public_id=public_id)
     person = Person.objects.filter(entity=entity).first()
     org = Organization.objects.filter(entity=entity).first()
+    body_profile = getattr(entity, 'body_profile', None)
+    meetings = []
+    if body_profile:
+        meetings = body_profile.meetings.select_related('agenda_source', 'minutes_source').all().order_by('-date')
     
     subject_assertions = entity.subject_assertions.select_related('subject_entity', 'object_entity').all()
     object_assertions = entity.object_assertions.select_related('subject_entity', 'object_entity').all()
@@ -266,6 +270,8 @@ def entity_detail(request, public_id):
         'audit_history': audit_history,
         'collections': collections,
         'all_collections': all_collections,
+        'body_profile': body_profile,
+        'meetings': meetings,
         'source_count': source_count,
         'assertion_count': assertion_count,
         'transaction_count': transaction_count,
