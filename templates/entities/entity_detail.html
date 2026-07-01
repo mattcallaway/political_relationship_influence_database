@@ -63,12 +63,34 @@
             </p>
         </div>
         <div style="text-align:right; display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
-            <span class="badge {% if entity.status == 'VERIFIED' %}badge-approved{% elif entity.status == 'PROVISIONAL_AUTO_CREATED' %}badge-proposed{% else %}badge-verified{% endif %}" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
-                {{ entity.get_status_display }}
-            </span>
-            <span class="badge" style="background:#1e293b; color:var(--text-muted); font-size:0.75rem; border:1px solid var(--border-color);">
-                Publication: {{ entity.get_publication_status_display }}
-            </span>
+            <div style="display:flex; gap:0.5rem;">
+                <span class="badge {% if entity.status == 'VERIFIED' %}badge-approved{% elif entity.status == 'PROVISIONAL_AUTO_CREATED' %}badge-proposed{% else %}badge-verified{% endif %}" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
+                    {{ entity.get_status_display }}
+                </span>
+                <span class="badge" style="background:#1e293b; color:var(--text-muted); font-size:0.85rem; border:1px solid var(--border-color); padding:0.4rem 0.8rem;">
+                    Pub: {{ entity.get_publication_status_display }}
+                </span>
+            </div>
+            
+            <!-- Quick Moderation Form -->
+            <form method="post" action="{% url 'entity_moderate' entity.public_id %}" style="display:flex; gap:0.25rem; margin-top:0.5rem; align-items:center;">
+                {% csrf_token %}
+                <select name="status" style="font-size:0.75rem; padding:0.2rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; cursor:pointer;">
+                    <option value="APPROVED" {% if entity.status == 'APPROVED' %}selected{% endif %}>Approved</option>
+                    <option value="VERIFIED" {% if entity.status == 'VERIFIED' %}selected{% endif %}>Verified</option>
+                    <option value="PROVISIONAL_AUTO_CREATED" {% if entity.status == 'PROVISIONAL_AUTO_CREATED' %}selected{% endif %}>Provisional</option>
+                    <option value="DISPUTED" {% if entity.status == 'DISPUTED' %}selected{% endif %}>Disputed</option>
+                    <option value="REJECTED" {% if entity.status == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                </select>
+                <select name="publication_status" style="font-size:0.75rem; padding:0.2rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; cursor:pointer;">
+                    <option value="INTERNAL_ONLY" {% if entity.publication_status == 'INTERNAL_ONLY' %}selected{% endif %}>Internal Only</option>
+                    <option value="NEEDS_REVIEW" {% if entity.publication_status == 'NEEDS_REVIEW' %}selected{% endif %}>Needs Review</option>
+                    <option value="PUBLISHABLE" {% if entity.publication_status == 'PUBLISHABLE' %}selected{% endif %}>Publishable</option>
+                    <option value="PUBLISHED" {% if entity.publication_status == 'PUBLISHED' %}selected{% endif %}>Published</option>
+                    <option value="WITHHELD" {% if entity.publication_status == 'WITHHELD' %}selected{% endif %}>Withheld</option>
+                </select>
+                <button type="submit" class="btn" style="font-size:0.7rem; padding:0.2rem 0.4rem;">Update</button>
+            </form>
         </div>
     </div>
     
@@ -281,7 +303,17 @@
                             {% endif %}
                         </td>
                         <td><span class="badge" style="background:#1e293b;">{{ ast.get_claim_type_display }}</span></td>
-                        <td><span class="badge badge-verified">{{ ast.get_verification_status_display }}</span></td>
+                        <td>
+                            <form method="post" action="{% url 'assertion_moderate' ast.id %}" style="display:inline-flex; gap:0.25rem; margin:0;">
+                                {% csrf_token %}
+                                <select name="verification_status" onchange="this.form.submit()" style="font-size:0.75rem; padding:0.15rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; cursor:pointer;">
+                                    <option value="PROPOSED" {% if ast.verification_status == 'PROPOSED' %}selected{% endif %}>Proposed</option>
+                                    <option value="REVIEWED" {% if ast.verification_status == 'REVIEWED' %}selected{% endif %}>Reviewed</option>
+                                    <option value="VERIFIED" {% if ast.verification_status == 'VERIFIED' %}selected{% endif %}>Verified</option>
+                                    <option value="DISPUTED" {% if ast.verification_status == 'DISPUTED' %}selected{% endif %}>Disputed</option>
+                                </select>
+                            </form>
+                        </td>
                         <td>
                             {% for asrc in ast.assertion_sources.all %}
                             <span style="background:rgba(255,255,255,0.05); padding:0.1rem 0.4rem; border-radius:4px; font-size:0.8rem;">

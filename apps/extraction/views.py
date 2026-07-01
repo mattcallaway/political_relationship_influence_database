@@ -293,3 +293,68 @@ def review_queue(request):
         'assertions': assertions[:50],
         'provisional_entities': provisional_entities[:50]
     })
+
+def moderate_bulk_action(request):
+    from django.shortcuts import redirect
+    from apps.entities.models import Entity, EntityStatus
+    from apps.assertions.models import Assertion, VerificationStatus
+    from apps.transactions.models import Contribution, ReviewStatus, AuditEvent
+    from apps.research.models import EntityMatchCandidate
+    import random
+    
+    action = request.POST.get('action')
+    record_type = request.POST.get('record_type')
+    record_id = request.POST.get('record_id')
+    
+    user = request.user if request.user.is_authenticated else None
+    user_name = user.username if user else "anonymous"
+    
+    if action == 'verify':
+        if record_type == 'entity':
+            ent = Entity.objects.get(id=record_id)
+            old_status = ent.status
+            ent.status = EntityStatus.VERIFIED
+            ent.save()
+            AuditEvent.objects.create(
+                action="MODERATE",
+                table_name="Entity",
+                record_id=str(ent.id),
+                prior_value={"status": old_status},
+                new_value={"status": "VERIFIED"},
+                user=user,
+                reason=f"Quick verified entity '{ent.canonical_name}' by user '{user_name}'"
+            )
+        elif record_type == 'assertion':
+            ast = Assertion.objects.get(id=record_id)
+            old_status = ast.verification_status
+            ast.verification_status = VerificationStatus.VERIFIED
+            ast.save()
+            AuditEvent.objects.create(
+                action="MODERATE",
+                table_name="Assertion",
+                record_id=str(ast.id),
+                prior_value={"verification_status": old_status},
+                new_value={"verification_status": "VERIFIED"},
+                user=user,
+                reason=f"Quick verified assertion '{ast.public_id}' by user '{user_name}'"
+            )
+        elif record_type == 'contribution':
+            con = Contribution.objects.get(id=record_id)
+            old_status = con.review_status
+            con.review_status = ReviewStatus.VERIFIED
+            con.save()
+            AuditEvent.objects.create(
+                action="MODERATE",
+                table_name="Contribution",
+                record_id=str(con.id),
+                prior_value={"review_status": old_status},
+                new_value={"review_status": "VERIFIED"},
+                user=user,
+                reason=f"Quick verified contribution '{con.public_id}' by user '{user_name}'"
+            )
+        elif record_type == 'match':
+            match = EntityMatchCandidate.objects.get(id=record_id)
+            match.status = 'APPROVED'
+            match.save()
+            
+    return redirect('review_queue')

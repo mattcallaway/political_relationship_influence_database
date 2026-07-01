@@ -100,3 +100,36 @@ def edit_assertion(request, assertion_id):
         'predicates': vocab,
         'claim_types': ClaimType.choices
     })
+
+def assertion_moderate(request, assertion_id):
+    from django.shortcuts import get_object_or_404, redirect
+    from apps.assertions.models import Assertion, VerificationStatus
+    from apps.transactions.models import AuditEvent
+    
+    assertion = get_object_or_404(Assertion, id=assertion_id)
+    if request.method == 'POST':
+        new_status = request.POST.get('verification_status')
+        old_status = assertion.verification_status
+        
+        if new_status and new_status in [choice[0] for choice in VerificationStatus.choices]:
+            assertion.verification_status = new_status
+            
+        assertion.save()
+        
+        # Log AuditEvent
+        import random
+        user = request.user if request.user.is_authenticated else None
+        user_name = user.username if user else "anonymous"
+        AuditEvent.objects.create(
+            action="MODERATE",
+            table_name="Assertion",
+            record_id=str(assertion.id),
+            prior_value={"verification_status": old_status},
+            new_value={"verification_status": assertion.verification_status},
+            user=user,
+            reason=f"Moderated assertion '{assertion.public_id}' status to '{assertion.verification_status}' by user '{user_name}'"
+        )
+        
+    if assertion.subject_entity:
+        return redirect('entity_detail', public_id=assertion.subject_entity.public_id)
+    return redirect('assertion_list')

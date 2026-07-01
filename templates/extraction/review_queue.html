@@ -46,11 +46,20 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if con.document %}
-                        <a href="/extraction/review/{{ con.document.id }}/" class="btn" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Review Side-by-Side</a>
-                        {% else %}
-                        <span style="color:var(--text-muted);">No page reference</span>
-                        {% endif %}
+                        <div style="display:flex; gap:0.25rem; align-items:center;">
+                            {% if con.document %}
+                            <a href="/extraction/review/{{ con.document.id }}/" class="btn" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Review Side-by-Side</a>
+                            {% else %}
+                            <span style="color:var(--text-muted); font-size:0.75rem;">No page reference</span>
+                            {% endif %}
+                            <form method="post" action="{% url 'moderate_bulk_action' %}" style="display:inline-block; margin:0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="verify">
+                                <input type="hidden" name="record_type" value="contribution">
+                                <input type="hidden" name="record_id" value="{{ con.id }}">
+                                <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color:var(--accent-emerald);">Quick Verify</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
@@ -134,7 +143,16 @@
                     <td><span class="badge" style="background:#1e293b;">{{ ast.get_claim_type_display }}</span></td>
                     <td><span class="badge badge-proposed">{{ ast.get_verification_status_display }}</span></td>
                     <td>
-                        <a href="/assertions/edit/{{ ast.id }}/" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Verify / Edit</a>
+                        <div style="display:flex; gap:0.25rem; align-items:center;">
+                            <a href="/assertions/edit/{{ ast.id }}/" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Verify / Edit</a>
+                            <form method="post" action="{% url 'moderate_bulk_action' %}" style="display:inline-block; margin:0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="verify">
+                                <input type="hidden" name="record_type" value="assertion">
+                                <input type="hidden" name="record_id" value="{{ ast.id }}">
+                                <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color:var(--accent-emerald);">Quick Verify</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
@@ -170,7 +188,16 @@
                     <td><span class="badge" style="background:#1e293b; color:#fff;">{{ ent.entity_type }}</span></td>
                     <td>{{ ent.jurisdiction }}</td>
                     <td>
-                        <a href="/entity/{{ ent.public_id }}/" class="btn" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Open Workspace</a>
+                        <div style="display:flex; gap:0.25rem; align-items:center;">
+                            <a href="/entity/{{ ent.public_id }}/" class="btn" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Open Workspace</a>
+                            <form method="post" action="{% url 'moderate_bulk_action' %}" style="display:inline-block; margin:0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="verify">
+                                <input type="hidden" name="record_type" value="entity">
+                                <input type="hidden" name="record_id" value="{{ ent.id }}">
+                                <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color:var(--accent-emerald);">Quick Verify</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

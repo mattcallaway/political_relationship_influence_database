@@ -351,3 +351,39 @@ def unified_search(request):
         'results': results,
         'saved_searches': saved_searches
     })
+
+def entity_moderate(request, public_id):
+    from django.shortcuts import get_object_or_404, redirect
+    from apps.entities.models import Entity, EntityStatus, PublicationStatus
+    from apps.transactions.models import AuditEvent
+    
+    entity = get_object_or_404(Entity, public_id=public_id)
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+        new_pub_status = request.POST.get('publication_status')
+        
+        old_status = entity.status
+        old_pub_status = entity.publication_status
+        
+        if new_status and new_status in [choice[0] for choice in EntityStatus.choices]:
+            entity.status = new_status
+        if new_pub_status and new_pub_status in [choice[0] for choice in PublicationStatus.choices]:
+            entity.publication_status = new_pub_status
+            
+        entity.save()
+        
+        # Log AuditEvent
+        import random
+        user = request.user if request.user.is_authenticated else None
+        user_name = user.username if user else "anonymous"
+        AuditEvent.objects.create(
+            action="MODERATE",
+            table_name="Entity",
+            record_id=str(entity.id),
+            prior_value={"status": old_status, "publication_status": old_pub_status},
+            new_value={"status": entity.status, "publication_status": entity.publication_status},
+            user=user,
+            reason=f"Moderated entity '{entity.canonical_name}' by user '{user_name}'"
+        )
+        
+    return redirect('entity_detail', public_id=entity.public_id)

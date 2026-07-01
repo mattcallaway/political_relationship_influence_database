@@ -10,4 +10,5 @@ urlpatterns = [
     path('merge/reverse/<uuid:merge_id>/', views.reverse_entity_merge, name='reverse_entity_merge'),
     path('reject/<uuid:contribution_id>/', views.reject_contribution, name='reject_contribution'),
     path('correct/<uuid:contribution_id>/', views.correct_contribution_fields, name='correct_contribution_fields'),
+    path('moderate/bulk/', views.moderate_bulk_action, name='moderate_bulk_action'),
 ]
