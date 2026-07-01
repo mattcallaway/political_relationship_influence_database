@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Lobbying & Advocacy Records{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:2rem;">
+    <h2>Lobbying Disclosures & Client Representation</h2>
+    <p style="color:var(--text-muted);">Index of lobbying campaigns, consultants, client organizations, and targeted governmental entities.</p>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Lobbyist Firm</th>
+                <th>Client</th>
+                <th>Target Agency</th>
+                <th>Reporting Period</th>
+                <th>Compensation</th>
+                <th>Matters Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for act in lobbying_activities %}
+            <tr>
+                <td><a href="/entity/{{ act.lobbyist_entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ act.lobbyist_entity.canonical_name }}</a></td>
+                <td><a href="/entity/{{ act.client_entity.public_id }}/" style="font-weight:bold;">{{ act.client_entity.canonical_name }}</a></td>
+                <td>
+                    {% if act.agency_entity %}
+                    <a href="/entity/{{ act.agency_entity.public_id }}/">{{ act.agency_entity.canonical_name }}</a>
+                    {% else %}
+                    <span style="color:var(--text-muted);">N/A</span>
+                    {% endif %}
+                </td>
+                <td style="font-family:monospace;">{{ act.reporting_period }}</td>
+                <td style="font-family:monospace; color:var(--accent-emerald); font-weight:bold;">
+                    {% if act.compensation_amount %}${{ act.compensation_amount|stringformat:".2f" }}{% else %}Unspecified{% endif %}
+                </td>
+                <td style="font-size:0.9rem;">{{ act.matters_described|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No lobbying disclosure logs in the database.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -13,6 +13,8 @@ urlpatterns = [
     path('transactions/', include('apps.transactions.urls')),
     path('research/', include('apps.research.urls')),
     path('exports/', include('apps.exports.urls')),
+    path('government/', include('apps.government.urls')),
+    path('projects/', include('apps.projects.urls')),
 ]
 
 if settings.DEBUG:

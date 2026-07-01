@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Government Contracts & Purchasing{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:2rem;">
+    <h2>Public Sector Contracts & Vendor Relations</h2>
+    <p style="color:var(--text-muted);">List of public purchasing, procurement, service, and infrastructure construction contracts.</p>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Contract Title / Description</th>
+                <th>Public Agency</th>
+                <th>Contractor / Vendor</th>
+                <th>Execution Date</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contract in contracts %}
+            <tr>
+                <td><strong>{{ contract.contract_title }}</strong></td>
+                <td><a href="/entity/{{ contract.agency_entity.public_id }}/">{{ contract.agency_entity.canonical_name }}</a></td>
+                <td><a href="/entity/{{ contract.vendor_entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ contract.vendor_entity.canonical_name }}</a></td>
+                <td style="font-family:monospace;">{{ contract.execution_date|date:'Y-m-d'|default:"-" }}</td>
+                <td style="font-family:monospace; color:var(--accent-blue); font-weight:bold;">
+                    {% if contract.amount %}${{ contract.amount|stringformat:".2f" }}{% else %}Unspecified{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No procurement contracts cataloged.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

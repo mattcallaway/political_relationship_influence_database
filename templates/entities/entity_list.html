@@ -1,44 +1,85 @@
 {% extends 'base.html' %}
 
-{% block title %}Canonical Entities - Sonoma Research Platform{% endblock %}
+{% block title %}Entities Directory - Sonoma Civic Platform{% endblock %}
 
 {% block content %}
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-    <h2>Canonical Entities Index</h2>
-    <form method="get" action="/" style="display:flex; gap:0.5rem;">
-        <input type="text" name="q" value="{{ query }}" placeholder="Search entity names..." style="padding:0.5rem 1rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary); color:#fff; width:280px;">
-        <select name="type" style="padding:0.5rem 1rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary); color:#fff;">
-            <option value="">All Types</option>
-            <option value="PERSON" {% if selected_type == 'PERSON' %}selected{% endif %}>People</option>
-            <option value="ORGANIZATION" {% if selected_type == 'ORGANIZATION' %}selected{% endif %}>Organizations</option>
-        </select>
-        <button type="submit" class="btn">Search</button>
-    </form>
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Entities Directory</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">Browse, filter, and analyze all registered civic entities, candidates, committees, and projects.</p>
+        </div>
+        
+        <!-- Search bar -->
+        <form method="get" action="/search/" style="display:flex; gap:0.5rem;">
+            <input type="text" name="q" placeholder="Unified search..." style="padding:0.5rem 1rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; width:240px; font-size:0.85rem;">
+            <button type="submit" class="btn" style="padding:0.5rem 1rem; font-size:0.85rem;">Search</button>
+        </form>
+    </div>
 </div>
 
-<div class="card">
+<!-- Directory Navigation Tabs -->
+<div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem;">
+    <a href="/?dir=all" class="btn {% if selected_dir == 'all' or not selected_dir %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">All Entities</a>
+    <a href="/?dir=PERSON" class="btn {% if selected_dir == 'PERSON' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">People</a>
+    <a href="/?dir=ORGANIZATION" class="btn {% if selected_dir == 'ORGANIZATION' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Organizations</a>
+    <a href="/?dir=CAMPAIGN" class="btn {% if selected_dir == 'CAMPAIGN' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Campaigns</a>
+    <a href="/?dir=COMMITTEE" class="btn {% if selected_dir == 'COMMITTEE' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Committees</a>
+    <a href="/?dir=DEVELOPMENT_PROJECT" class="btn {% if selected_dir == 'DEVELOPMENT_PROJECT' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Projects</a>
+    <a href="/?dir=GOVERNMENT_BODY" class="btn {% if selected_dir == 'GOVERNMENT_BODY' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Gov Bodies</a>
+    <a href="/?dir=PUBLIC_OFFICE" class="btn {% if selected_dir == 'PUBLIC_OFFICE' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Offices</a>
+    <a href="/?dir=provisional" class="btn {% if selected_dir == 'provisional' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px; background:rgba(251,191,36,0.1); color:var(--accent-amber); border-color:rgba(251,191,36,0.3);">Provisional</a>
+    <a href="/?dir=possible_duplicates" class="btn {% if selected_dir == 'possible_duplicates' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px; background:rgba(244,63,94,0.1); color:var(--accent-rose); border-color:rgba(244,63,94,0.3);">Duplicates</a>
+    <a href="/?dir=recent" class="btn {% if selected_dir == 'recent' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Recently Updated</a>
+</div>
+
+<!-- Sorting and Filters Control Toolbar -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem; font-size:0.85rem; color:var(--text-muted);">
+    <div>
+        Showing <strong>{{ entities|length }}</strong> records
+    </div>
+    
+    <div style="display:flex; gap:1rem; align-items:center;">
+        <span>Sort By:</span>
+        <a href="?dir={{ selected_dir }}&sort=name" style="text-decoration:none; color:{% if selected_sort == 'name' %}#fff{% else %}var(--text-muted){% endif %}; font-weight:{% if selected_sort == 'name' %}bold{% else %}normal{% endif %};">Name</a> &bull;
+        <a href="?dir={{ selected_dir }}&sort=type" style="text-decoration:none; color:{% if selected_sort == 'type' %}#fff{% else %}var(--text-muted){% endif %}; font-weight:{% if selected_sort == 'type' %}bold{% else %}normal{% endif %};">Type</a> &bull;
+        <a href="?dir={{ selected_dir }}&sort=status" style="text-decoration:none; color:{% if selected_sort == 'status' %}#fff{% else %}var(--text-muted){% endif %}; font-weight:{% if selected_sort == 'status' %}bold{% else %}normal{% endif %};">Status</a> &bull;
+        <a href="?dir={{ selected_dir }}&sort=jurisdiction" style="text-decoration:none; color:{% if selected_sort == 'jurisdiction' %}#fff{% else %}var(--text-muted){% endif %}; font-weight:{% if selected_sort == 'jurisdiction' %}bold{% else %}normal{% endif %};">Jurisdiction</a> &bull;
+        <a href="?dir={{ selected_dir }}&sort=date_updated" style="text-decoration:none; color:{% if selected_sort == 'date_updated' %}#fff{% else %}var(--text-muted){% endif %}; font-weight:{% if selected_sort == 'date_updated' %}bold{% else %}normal{% endif %};">Updated</a>
+    </div>
+</div>
+
+<div class="card" style="padding:0.5rem 1rem;">
     <table>
         <thead>
             <tr>
                 <th>Public ID</th>
                 <th>Canonical Name</th>
-                <th>Entity Type</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>Type</th>
+                <th>Jurisdiction</th>
+                <th>Review Status</th>
             </tr>
         </thead>
         <tbody>
             {% for entity in entities %}
             <tr>
-                <td><strong>{{ entity.public_id }}</strong></td>
-                <td>{{ entity.canonical_name }}</td>
-                <td><span class="badge badge-verified">{{ entity.entity_type }}</span></td>
-                <td><span class="badge badge-approved">{{ entity.status }}</span></td>
-                <td><a href="/entity/{{ entity.public_id }}/" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.6rem;">View Profile</a></td>
+                <td style="font-family:monospace; font-size:0.85rem; color:var(--text-muted);">{{ entity.public_id }}</td>
+                <td>
+                    <a href="/entity/{{ entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue); text-decoration:none; font-size:0.95rem;">
+                        {{ entity.canonical_name }}
+                    </a>
+                </td>
+                <td><span class="badge" style="background:var(--bg-secondary); color:#fff; font-size:0.7rem; border:1px solid var(--border-color);">{{ entity.get_entity_type_display }}</span></td>
+                <td>{{ entity.jurisdiction }}</td>
+                <td>
+                    <span class="badge {% if entity.status == 'VERIFIED' %}badge-approved{% elif entity.status == 'NEEDS_REVIEW' or entity.status == 'PROVISIONAL_AUTO_CREATED' %}badge-proposed{% else %}badge-verified{% endif %}" style="font-size:0.7rem;">
+                        {{ entity.get_status_display }}
+                    </span>
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" style="text-align:center; color:var(--text-muted);">No entities found matching query.</td>
+                <td colspan="5" style="text-align:center; color:var(--text-muted); padding:3rem 0;">No entities match the selected directory or filters.</td>
             </tr>
             {% endfor %}
         </tbody>

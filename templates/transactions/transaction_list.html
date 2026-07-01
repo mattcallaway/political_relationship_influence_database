@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Campaign Finance Ledgers - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Campaign Finance Transactions Ledger</h2>
+    <p style="color:var(--text-muted); font-size:0.9rem;">Filter, inspect, and analyze contributions made to campaign committees in local elections.</p>
+</div>
+
+<!-- Filters Toolbar -->
+<div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
+    <form method="get" action="/transactions/" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; align-items:flex-end;">
+        <div>
+            <label style="display:block; margin-bottom:0.35rem; font-size:0.8rem; font-weight:600; color:var(--text-muted);">DONOR NAME</label>
+            <input type="text" name="donor" value="{{ donor }}" placeholder="Donor name..." style="width:100%; padding:0.5rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <label style="display:block; margin-bottom:0.35rem; font-size:0.8rem; font-weight:600; color:var(--text-muted);">RECIPIENT COMMITTEE</label>
+            <input type="text" name="recipient" value="{{ recipient }}" placeholder="Filer committee..." style="width:100%; padding:0.5rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <label style="display:block; margin-bottom:0.35rem; font-size:0.8rem; font-weight:600; color:var(--text-muted);">CYCLE (YEAR)</label>
+            <input type="text" name="cycle" value="{{ cycle }}" placeholder="e.g. 2020" style="width:100%; padding:0.5rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <label style="display:block; margin-bottom:0.35rem; font-size:0.8rem; font-weight:600; color:var(--text-muted);">MIN AMOUNT ($)</label>
+            <input type="number" name="min_amount" value="{{ min_amount }}" placeholder="Min..." style="width:100%; padding:0.5rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <label style="display:block; margin-bottom:0.35rem; font-size:0.8rem; font-weight:600; color:var(--text-muted);">MAX AMOUNT ($)</label>
+            <input type="number" name="max_amount" value="{{ max_amount }}" placeholder="Max..." style="width:100%; padding:0.5rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.85rem;">
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button type="submit" class="btn" style="flex:1; padding:0.5rem; font-size:0.85rem;">Filter</button>
+            <a href="/transactions/" class="btn btn-secondary" style="padding:0.5rem; font-size:0.85rem; text-decoration:none; text-align:center;">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+        Showing top <strong>{{ contributions|length }}</strong> results matching criteria
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Filer Committee (Recipient)</th>
+                <th>Donor (Sourced Name)</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Filing Ref</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for con in contributions %}
+            <tr>
+                <td style="font-family:monospace; font-size:0.85rem; color:var(--text-muted);">{{ con.public_id }}</td>
+                <td>
+                    {% if con.filer_committee %}
+                    <a href="/entity/{{ con.filer_committee.public_id }}/" style="font-weight:bold; color:var(--accent-blue); text-decoration:none;">{{ con.filer_committee.canonical_name }}</a>
+                    {% else %}
+                    <span style="color:var(--text-muted);">[N/A]</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if con.donor_entity %}
+                    <a href="/entity/{{ con.donor_entity.public_id }}/" style="font-weight:bold; color:#fff; text-decoration:none;">{{ con.donor_entity.canonical_name }}</a>
+                    {% else %}
+                    {{ con.donor_raw_name }}
+                    {% endif %}
+                </td>
+                <td style="font-family:monospace;">{{ con.transaction_date|date:'Y-m-d'|default:"[N/A]" }}</td>
+                <td style="font-family:monospace; font-weight:bold; color:var(--accent-emerald);">${{ con.amount|stringformat:".2f" }}</td>
+                <td><span class="badge" style="background:#475569; color:#fff; font-size:0.7rem;">{{ con.transaction_code }}</span></td>
+                <td>
+                    <span class="badge {% if con.review_status == 'VERIFIED' %}badge-approved{% elif con.review_status == 'NEEDS_REVIEW' %}badge-proposed{% else %}badge-verified{% endif %}" style="font-size:0.7rem;">
+                        {{ con.review_status }}
+                    </span>
+                </td>
+                <td>
+                    {% if con.source %}
+                    <span style="font-size:0.8rem; color:var(--text-muted);">{{ con.source.public_id }}</span>
+                    {% else %}
+                    <span style="color:var(--text-muted);">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align:center; color:var(--text-muted); padding:3rem 0;">
+                    No transactions match the filtering parameters.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

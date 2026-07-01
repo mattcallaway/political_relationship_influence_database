@@ -46,3 +46,44 @@ class ExtractedField(models.Model):
 
     def __str__(self):
         return f"{self.field_type}: {self.raw_value} ({self.reviewer_status})"
+
+class ExtractedContributorBlock(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    page = models.ForeignKey(DocumentPage, on_delete=models.CASCADE, related_name='contributor_blocks')
+    block_number = models.IntegerField()
+    raw_text = models.TextField()
+    bounding_box_json = models.JSONField(null=True, blank=True, help_text="[vx0, vy0, vx1, vy1]")
+    extraction_method = models.CharField(max_length=50, default='embedded_text_layout') # embedded_text_layout or OCR_layout
+    parser_version = models.CharField(max_length=50, default='2.0')
+    original_parsed_json = models.JSONField(default=dict)
+
+    def __str__(self):
+        return f"Block {self.block_number} on Page {self.page.page_number} ({self.extraction_method})"
+
+class EntityMatchAttempt(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    contribution = models.ForeignKey('transactions.Contribution', on_delete=models.CASCADE, related_name='match_attempts')
+    selected_entity = models.ForeignKey(Entity, on_delete=models.CASCADE, related_name='match_attempts')
+    match_method = models.CharField(max_length=50) # e.g. EXACT_COMMITTEE_ID, EXACT_NORMALIZED_NAME, etc.
+    match_score = models.FloatField(default=0.0)
+    name_score = models.FloatField(default=0.0)
+    location_score = models.FloatField(default=0.0)
+    employer_score = models.FloatField(default=0.0)
+    entity_type_compatibility = models.BooleanField(default=True)
+    committee_id_match = models.BooleanField(default=False)
+    reason = models.TextField(blank=True)
+    model_version = models.CharField(max_length=50, default='2.0')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"MatchAttempt ({self.match_method}) -> {self.selected_entity.public_id} ({self.match_score}%)"
+
+class EntityMatchCandidate(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    match_attempt = models.ForeignKey(EntityMatchAttempt, on_delete=models.CASCADE, related_name='candidates')
+    entity = models.ForeignKey(Entity, on_delete=models.CASCADE)
+    score = models.FloatField(default=0.0)
+    match_method = models.CharField(max_length=50, blank=True)
+
+    def __str__(self):
+        return f"Candidate {self.entity.public_id} (Score: {self.score}%)"

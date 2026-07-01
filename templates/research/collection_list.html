@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Research Collections - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Research Collections</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">Organize entities, sources, campaign transactions, and PRA requests into structured investigative portfolios.</p>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="/research/tasks/" class="btn btn-secondary" style="font-size:0.85rem;">Global Tasks Tracker</a>
+            <button class="btn" style="font-size:0.85rem;">Create Collection</button>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:1.5rem;">
+    {% for col in collections %}
+    <div class="card" style="display:flex; flex-direction:column; justify-content:space-between; border-left:3px solid var(--accent-blue);">
+        <div>
+            <h3 style="font-family:'Outfit', sans-serif; margin-bottom:0.5rem;"><a href="/research/collections/{{ col.id }}/" style="color:#fff; text-decoration:none;">{{ col.name }}</a></h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; line-height:1.4; margin-bottom:1rem;">{{ col.description|truncatewords:25 }}</p>
+        </div>
+        
+        <div style="border-top:1px solid var(--border-color); padding-top:0.75rem; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--text-muted);">
+            <span>
+                <strong>{{ col.entities.count }}</strong> entities &bull; <strong>{{ col.tasks.count }}</strong> tasks
+            </span>
+            <a href="/research/collections/{{ col.id }}/" style="color:var(--accent-blue); text-decoration:none; font-weight:bold;">Open Workspace &rarr;</a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card" style="grid-column: 1 / -1; text-align:center; padding:3rem 0; color:var(--text-muted);">
+        No research collections initialized yet. Create one to begin grouping evidence.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

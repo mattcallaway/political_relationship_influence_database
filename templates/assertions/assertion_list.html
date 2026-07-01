@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Assertions - Sonoma Civic Research Platform{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Evidentiary Graph Assertions</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">Factual relationships, interpretive claims, and network associations supported by source records.</p>
+        </div>
+        <a href="/assertions/create/" class="btn" style="padding:0.6rem 1.2rem; font-size:0.85rem;">Create New Assertion</a>
+    </div>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Subject Entity</th>
+                <th>Relationship (Predicate)</th>
+                <th>Object (Entity / Value)</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Confidence</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ass in assertions %}
+            <tr>
+                <td><strong>{{ ass.public_id }}</strong></td>
+                <td><a href="/entity/{{ ass.subject_entity.public_id }}/" style="font-weight:bold; color:#fff; text-decoration:none;">{{ ass.subject_entity.canonical_name }}</a></td>
+                <td><code style="background:rgba(255,255,255,0.07); padding:0.2rem 0.4rem; border-radius:4px; color:var(--accent-blue);">{{ ass.predicate }}</code></td>
+                <td>
+                    {% if ass.object_entity %}
+                    <a href="/entity/{{ ass.object_entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue); text-decoration:none;">{{ ass.object_entity.canonical_name }}</a>
+                    {% else %}
+                    {{ ass.object_value }}
+                    {% endif %}
+                </td>
+                <td><span class="badge" style="background:#334155; color:#fff;">{{ ass.get_claim_type_display }}</span></td>
+                <td>
+                    <span class="badge {% if ass.verification_status == 'VERIFIED' %}badge-approved{% elif ass.verification_status == 'UNVERIFIED' or ass.verification_status == 'LEAD' %}badge-proposed{% else %}badge-verified{% endif %}">
+                        {{ ass.get_verification_status_display }}
+                    </span>
+                </td>
+                <td style="font-family:monospace; font-weight:bold;">{{ ass.confidence_score }}%</td>
+                <td>
+                    <a href="/assertions/edit/{{ ass.id }}/" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Edit</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align:center; color:var(--text-muted); padding:3rem 0;">
+                    No assertions cataloged in the database yet. Click "Create New Assertion" to add one.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

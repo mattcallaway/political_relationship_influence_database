@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Import & Ingestion History{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:2rem;">
+    <h2>Import & Ingestion Management Hub</h2>
+    <p style="color:var(--text-muted);">Monitor Excel workbook loads, Form 460 bulk parses, meeting minutes extractions, and ingestion errors.</p>
+</div>
+
+<div class="card">
+    <table style="width:100%;">
+        <thead>
+            <tr>
+                <th>Batch Name</th>
+                <th>Source File</th>
+                <th>Started At</th>
+                <th>Status</th>
+                <th>Metrics (Provisional vs Canonical)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for batch in batches %}
+            <tr>
+                <td><strong>{{ batch.batch_name }}</strong></td>
+                <td><code style="background:rgba(255,255,255,0.05); padding:0.1rem 0.3rem;">{{ batch.source_file }}</code></td>
+                <td style="font-family:monospace;">{{ batch.started_at|date:'Y-m-d H:i:s' }}</td>
+                <td>
+                    <span class="badge {% if batch.status == 'SUCCESS' or batch.status == 'COMPLETED' or batch.status == 'IN_PROGRESS' %}badge-approved{% else %}badge-proposed{% endif %}">
+                        {{ batch.status }}
+                    </span>
+                </td>
+                <td>
+                    {% if batch.summary_counts %}
+                    <pre style="font-family:monospace; font-size:0.8rem; margin:0; color:var(--accent-blue);">{{ batch.summary_counts }}</pre>
+                    {% else %}
+                    <span style="color:var(--text-muted);">No counts compiled</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="color:var(--text-muted); text-align:center; padding:2rem 0;">No import batch histories found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

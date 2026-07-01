@@ -1,71 +1,533 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ entity.canonical_name }} - Profile{% endblock %}
+{% block title %}{{ entity.canonical_name }} - Entity Profile Hub{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:1.5rem;">
-    <a href="/" class="btn btn-secondary" style="font-size:0.85rem;">&larr; Back to Entities Index</a>
+<style>
+    /* Tab System Styling */
+    .tab-nav {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5rem;
+    }
+    .tab-btn {
+        background: transparent;
+        color: var(--text-muted);
+        border: none;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    .tab-btn:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .tab-btn.active {
+        color: var(--accent-blue);
+        background: rgba(56, 189, 248, 0.1);
+        font-weight: 600;
+    }
+    .tab-content {
+        display: none;
+    }
+    .tab-content.active {
+        display: block;
+    }
+</style>
+
+<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <a href="/" class="btn btn-secondary" style="font-size:0.85rem;">&larr; Back to Directory</a>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <button class="btn btn-secondary" style="font-size:0.8rem;">Edit Identity</button>
+        <a href="/extraction/review/{{ entity.id }}/" class="btn btn-secondary" style="font-size:0.8rem; background:rgba(251,191,36,0.1); border-color:rgba(251,191,36,0.3); color:var(--accent-amber);">Propose Merge</a>
+        <button class="btn" style="font-size:0.8rem;">Add Assertion</button>
+        <button class="btn btn-secondary" style="font-size:0.8rem;">Pin to Collection</button>
+    </div>
 </div>
 
-<div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+<!-- Header Card -->
+<div class="card" style="padding:2rem; margin-bottom:2rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(15, 23, 42, 0.9) 100%); border-left: 4px solid var(--accent-blue);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1.5rem;">
         <div>
-            <h2>{{ entity.canonical_name }}</h2>
-            <p style="color:var(--text-muted); margin-top:0.25rem;">Public ID: <strong>{{ entity.public_id }}</strong> &bull; Type: {{ entity.entity_type }}</p>
+            <h2 style="font-family:'Outfit', sans-serif; font-size:2.2rem; font-weight:700; color:#fff; margin-bottom:0.5rem;">{{ entity.canonical_name }}</h2>
+            <p style="color:var(--text-muted); font-size:0.95rem; display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <span>Public ID: <strong style="color:#fff;">{{ entity.public_id }}</strong></span>
+                <span>Type: <strong style="color:var(--accent-blue);">{{ entity.get_entity_type_display }}</strong></span>
+                <span>Jurisdiction: <strong style="color:#fff;">{{ entity.jurisdiction|default:"Sonoma County" }}</strong></span>
+            </p>
         </div>
-        <span class="badge badge-approved">{{ entity.status }}</span>
+        <div style="text-align:right; display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
+            <span class="badge {% if entity.status == 'VERIFIED' %}badge-approved{% elif entity.status == 'PROVISIONAL_AUTO_CREATED' %}badge-proposed{% else %}badge-verified{% endif %}" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
+                {{ entity.get_status_display }}
+            </span>
+            <span class="badge" style="background:#1e293b; color:var(--text-muted); font-size:0.75rem; border:1px solid var(--border-color);">
+                Publication: {{ entity.get_publication_status_display }}
+            </span>
+        </div>
     </div>
     
-    {% if person %}
-    <hr style="border-color:var(--border-color); margin:1rem 0;">
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
-        <div><strong>Display Name:</strong> {{ person.display_name }}</div>
-        <div><strong>Public Role:</strong> {{ person.public_role|default:"N/A" }}</div>
-        <div><strong>Occupation:</strong> {{ person.occupation|default:"N/A" }}</div>
-        <div><strong>Jurisdiction:</strong> {{ person.jurisdiction }}</div>
-    </div>
-    {% endif %}
-
-    {% if org %}
-    <hr style="border-color:var(--border-color); margin:1rem 0;">
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
-        <div><strong>Legal Name:</strong> {{ org.legal_name }}</div>
-        <div><strong>Committee ID (FPPC):</strong> {{ org.committee_id|default:"N/A" }}</div>
-        <div><strong>Category:</strong> {{ org.org_category }}</div>
-        <div><strong>Jurisdiction:</strong> {{ org.jurisdiction }}</div>
+    {% if aliases %}
+    <div style="margin-top:1rem; font-size:0.85rem; color:var(--text-muted);">
+        Alternate Aliases: {% for alias in aliases %}<code style="background:rgba(255,255,255,0.05); padding:0.15rem 0.35rem; border-radius:4px; margin-right:0.25rem; color:#fff;">{{ alias.alias_text }}</code>{% endfor %}
     </div>
     {% endif %}
 </div>
 
-<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
-    <div class="card">
-        <h3>Evidentiary Assertions</h3>
-        <ul style="list-style:none; margin-top:1rem;">
-            {% for ast in subject_assertions %}
-            <li style="padding:0.75rem 0; border-bottom:1px solid var(--border-color);">
-                <span class="badge badge-verified">{{ ast.claim_type }}</span>
-                <strong>[{{ ast.predicate }}]</strong>
-                {% if ast.object_entity %}{{ ast.object_entity.canonical_name }}{% else %}{{ ast.object_value }}{% endif %}
-                <br><small style="color:var(--text-muted);">Status: {{ ast.verification_status }} &bull; Effective: {{ ast.effective_start|default:"N/A" }}</small>
-            </li>
-            {% empty %}
-            <li style="color:var(--text-muted); padding:0.5rem 0;">No subject assertions registered.</li>
-            {% endfor %}
-        </ul>
+<!-- Tab Navigation Header -->
+<div class="tab-nav">
+    <button class="tab-btn active" onclick="showTab(event, 'tab-overview')">Overview</button>
+    <button class="tab-btn" onclick="showTab(event, 'tab-timeline')">Timeline</button>
+    <button class="tab-btn" onclick="showTab(event, 'tab-assertions')">Assertions & Relations</button>
+    <button class="tab-btn" onclick="showTab(event, 'tab-finance')">Campaign Finance</button>
+    <button class="tab-btn" onclick="showTab(event, 'tab-lobbying')">Lobbying & Board Appts</button>
+    <button class="tab-btn" onclick="event.currentTarget.id === 'contracts-tab' ? showTab(event, 'tab-contracts') : showTab(event, 'tab-contracts')">Contracts & Projects</button>
+    <button class="tab-btn" onclick="showTab(event, 'tab-government')">Government Meetings & Votes</button>
+    <button class="tab-btn" onclick="showTab(event, 'tab-research')">Research & Questions</button>
+    <button class="tab-btn" onclick="showTab(event, 'tab-duplicates')">Duplicates & Auditing</button>
+</div>
+
+<!-- TABS CONTAINER -->
+<div>
+    <!-- TAB 1: OVERVIEW -->
+    <div id="tab-overview" class="tab-content active">
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:1.5rem; align-items:flex-start;">
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Profile Details</h3>
+                
+                {% if person %}
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">DISPLAY NAME</span><strong>{{ person.display_name }}</strong></div>
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">PUBLIC ROLE</span><strong>{{ person.public_role|default:"None documented" }}</strong></div>
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">OCCUPATION</span><strong>{{ person.occupation|default:"Unspecified" }}</strong></div>
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">BIOGRAPHY NOTES</span><p style="margin-top:0.25rem; font-size:0.9rem; color:#cbd5e1;">{{ person.notes|default:"No notes cataloged." }}</p></div>
+                </div>
+                {% endif %}
+
+                {% if org %}
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">LEGAL NAME</span><strong>{{ org.legal_name }}</strong></div>
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">CATEGORY</span><strong>{{ org.get_org_category_display }}</strong></div>
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">FPPC ID</span><strong>{{ org.committee_id|default:"N/A" }}</strong></div>
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">DESCRIPTION</span><p style="margin-top:0.25rem; font-size:0.9rem; color:#cbd5e1;">{{ org.notes|default:"No description registered." }}</p></div>
+                </div>
+                {% endif %}
+
+                {% if not person and not org %}
+                <p style="color:var(--text-muted);">Generic entity node. No profile sub-records exist.</p>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">System Warnings</h3>
+                <ul style="list-style:none; padding:0; font-size:0.85rem; display:flex; flex-direction:column; gap:0.5rem;">
+                    {% if entity.status == 'PROVISIONAL_AUTO_CREATED' %}
+                    <li style="color:var(--accent-amber);">⚠️ Entity is auto-created and provisional. Needs review.</li>
+                    {% endif %}
+                    {% if not subject_assertions %}
+                    <li style="color:var(--text-muted);">ℹ️ No directed relationships assertions cataloged.</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>Campaign Finance Transactions</h3>
-        <ul style="list-style:none; margin-top:1rem;">
-            {% for contrib in contributions_made %}
-            <li style="padding:0.75rem 0; border-bottom:1px solid var(--border-color);">
-                <strong style="color:var(--accent-emerald);">${{ contrib.amount }}</strong> contributed to <strong>{{ contrib.filer_committee.canonical_name }}</strong>
-                <br><small style="color:var(--text-muted);">Date: {{ contrib.transaction_date|default:"Unspecified" }} &bull; Schedule: {{ contrib.schedule }}</small>
-            </li>
-            {% empty %}
-            <li style="color:var(--text-muted); padding:0.5rem 0;">No documented financial transactions.</li>
-            {% endfor %}
-        </ul>
+    <!-- TAB 2: TIMELINE -->
+    <div id="tab-timeline" class="tab-content">
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Observable Timeline</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1.5rem; font-style:italic;">
+                Note: Chronological proximity represents evidence of a connection. It does not by itself prove coordination, wrongdoing, or impropriety.
+            </p>
+            
+            <!-- Filters Toolbar -->
+            <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; font-size:0.85rem; background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:6px; border:1px solid var(--border-color);">
+                <span style="font-weight:600; color:var(--text-muted);">Filter Events:</span>
+                <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" checked onchange="filterTimeline(this, 'Contribution')" style="cursor:pointer;"> Contributions</label>
+                <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" checked onchange="filterTimeline(this, 'Contract')" style="cursor:pointer;"> Contracts</label>
+                <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" checked onchange="filterTimeline(this, 'Appointment')" style="cursor:pointer;"> Appointments</label>
+                <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" checked onchange="filterTimeline(this, 'Vote')" style="cursor:pointer;"> Votes</label>
+                <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" checked onchange="filterTimeline(this, 'Relationship')" style="cursor:pointer;"> Relationships</label>
+            </div>
+
+            <div style="position:relative; padding-left:1.5rem; border-left:2px solid var(--border-color);">
+                {% for item in timeline %}
+                <div class="timeline-item" data-event-type="{{ item.type }}" style="position:relative; margin-bottom:1.5rem;">
+                    <div style="position:absolute; left:-1.9rem; top:0.25rem; width:10px; height:10px; border-radius:50%; background:{% if 'Contribution' in item.type %}var(--accent-emerald){% elif 'Contract' in item.type %}var(--accent-blue){% else %}var(--accent-amber){% endif %};"></div>
+                    <span style="font-family:monospace; font-weight:bold; color:var(--text-muted); font-size:0.85rem;">{{ item.date|date:'Y-m-d' }}</span>
+                    <span class="badge" style="margin-left:0.5rem; font-size:0.75rem;">{{ item.type }}</span>
+                    <p style="margin-top:0.25rem; font-size:0.95rem; color:#f1f5f9;">{{ item.description }}</p>
+                    {% if item.amount %}
+                    <strong style="font-family:monospace; color:var(--accent-emerald); font-size:0.9rem;">Amount: ${{ item.amount|stringformat:".2f" }}</strong>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p style="color:var(--text-muted); text-align:center; padding:2rem 0;">No chronological events cataloged for this entity profile.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function filterTimeline(cb, typeKeyword) {
+            var items = document.getElementsByClassName("timeline-item");
+            for (var i = 0; i < items.length; i++) {
+                var itemType = items[i].getAttribute("data-event-type");
+                if (itemType.indexOf(typeKeyword) !== -1) {
+                    items[i].style.display = cb.checked ? "block" : "none";
+                }
+            }
+        }
+    </script>
+
+    <!-- TAB 3: RELATIONSHIPS & ASSERTIONS -->
+    <div id="tab-assertions" class="tab-content">
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Directed Graph Assertions</h3>
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Predicate</th>
+                        <th>Object / Value</th>
+                        <th>Claim Type</th>
+                        <th>Verification Status</th>
+                        <th>Provenance Locators</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ast in subject_assertions %}
+                    <tr>
+                        <td><strong>{{ ast.subject_entity.canonical_name }}</strong></td>
+                        <td style="color:var(--accent-emerald); font-weight:bold;">{{ ast.predicate }}</td>
+                        <td>
+                            {% if ast.object_entity %}
+                            <a href="/entity/{{ ast.object_entity.public_id }}/">{{ ast.object_entity.canonical_name }}</a>
+                            {% else %}
+                            {{ ast.object_value }}
+                            {% endif %}
+                        </td>
+                        <td><span class="badge" style="background:#1e293b;">{{ ast.get_claim_type_display }}</span></td>
+                        <td><span class="badge badge-verified">{{ ast.get_verification_status_display }}</span></td>
+                        <td>
+                            {% for asrc in ast.assertion_sources.all %}
+                            <span style="background:rgba(255,255,255,0.05); padding:0.1rem 0.4rem; border-radius:4px; font-size:0.8rem;">
+                                {{ asrc.source.title|truncatechars:20 }} {% if asrc.source_locator.section %}(Page {{ asrc.source_locator.section }}){% endif %}
+                            </span>
+                            {% empty %}
+                            <span style="color:var(--accent-rose);">No source locator attached</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No directed assertions registered.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 4: CAMPAIGN FINANCE -->
+    <div id="tab-finance" class="tab-content">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+            <!-- Contributions Made -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Contributions Made</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Recipient</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in contributions_made %}
+                        <tr>
+                            <td><a href="/entity/{{ c.filer_committee.public_id }}/">{{ c.filer_committee.canonical_name }}</a></td>
+                            <td style="font-family:monospace;">{{ c.transaction_date|date:'Y-m-d' }}</td>
+                            <td style="color:var(--accent-emerald); font-weight:bold; font-family:monospace;">${{ c.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No contributions made.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Contributions Received -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Contributions Received</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Donor Raw Name</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in contributions_received %}
+                        <tr>
+                            <td>{{ c.donor_raw_name }}</td>
+                            <td style="font-family:monospace;">{{ c.transaction_date|date:'Y-m-d' }}</td>
+                            <td style="color:var(--accent-emerald); font-weight:bold; font-family:monospace;">${{ c.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No contributions received.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: LOBBYING & BOARD APPOINTMENTS -->
+    <div id="tab-lobbying" class="tab-content">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+            <!-- Lobbying Activities -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Lobbying Disclosures</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Client / Firm</th>
+                            <th>Period</th>
+                            <th>Compensation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lob in lobbying_as_firm %}
+                        <tr>
+                            <td>Client: <a href="/entity/{{ lob.client_entity.public_id }}/">{{ lob.client_entity.canonical_name }}</a></td>
+                            <td style="font-family:monospace;">{{ lob.reporting_period }}</td>
+                            <td style="color:var(--accent-emerald); font-weight:bold;">${{ lob.compensation_amount }}</td>
+                        </tr>
+                        {% empty %}
+                        {% for lob in lobbying_as_client %}
+                        <tr>
+                            <td>Firm: <a href="/entity/{{ lob.lobbyist_entity.public_id }}/">{{ lob.lobbyist_entity.canonical_name }}</a></td>
+                            <td style="font-family:monospace;">{{ lob.reporting_period }}</td>
+                            <td style="color:var(--accent-emerald); font-weight:bold;">${{ lob.compensation_amount }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No lobbying records.</td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Appointments -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Board Appointments</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Board / Commission</th>
+                            <th>Term Start</th>
+                            <th>Term End</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for apt in appointments %}
+                        <tr>
+                            <td><a href="/entity/{{ apt.body_entity.public_id }}/">{{ apt.body_entity.canonical_name }}</a></td>
+                            <td style="font-family:monospace;">{{ apt.start_date|date:'Y-m-d'|default:"-" }}</td>
+                            <td style="font-family:monospace;">{{ apt.end_date|date:'Y-m-d'|default:"Present" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No board appointments cataloged.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 6: CONTRACTS & PROJECTS -->
+    <div id="tab-contracts" class="tab-content">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+            <!-- Contracts -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Government Contracts</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Title / Partner</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ctr in vendor_contracts %}
+                        <tr>
+                            <td>{{ ctr.contract_title }}<br><small>Agency: {{ ctr.agency_entity.canonical_name }}</small></td>
+                            <td style="font-family:monospace;">{{ ctr.execution_date|date:'Y-m-d' }}</td>
+                            <td style="color:var(--accent-blue); font-weight:bold;">${{ ctr.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% empty %}
+                        {% for ctr in agency_contracts %}
+                        <tr>
+                            <td>{{ ctr.contract_title }}<br><small>Vendor: {{ ctr.vendor_entity.canonical_name }}</small></td>
+                            <td style="font-family:monospace;">{{ ctr.execution_date|date:'Y-m-d' }}</td>
+                            <td style="color:var(--accent-blue); font-weight:bold;">${{ ctr.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No contracts cataloged.</td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Projects -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Development Projects</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Project Title</th>
+                            <th>Applicant</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in projects %}
+                        <tr>
+                            <td><a href="/entity/{{ p.entity.public_id }}/">{{ p.entity.canonical_name }}</a></td>
+                            <td>{{ p.applicant.canonical_name|default:"Unspecified" }}</td>
+                            <td><span class="badge badge-approved">{{ p.status }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No land-use or development projects associated.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 7: MEETINGS & VOTES -->
+    <div id="tab-government" class="tab-content">
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Observed Voting Actions</h3>
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>Meeting Date</th>
+                        <th>Agenda Item Title</th>
+                        <th>Vote Cast</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in votes_cast %}
+                    <tr>
+                        <td style="font-family:monospace;">{{ v.meeting_date|date:'Y-m-d' }}</td>
+                        <td><strong>{{ v.item_title }}</strong></td>
+                        <td><span class="badge badge-verified">{{ v.vote_cast }}</span></td>
+                        <td>{{ v.outcome }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="color:var(--text-muted); text-align:center; padding:2rem 0;">No legislative voting records logged for this entity.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 8: RESEARCH -->
+    <div id="tab-research" class="tab-content">
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Linked Research Collections & Tasks</h3>
+            <p style="color:var(--text-muted);">This identity is grouped in these research workspaces:</p>
+            <ul style="margin:1rem 0; padding-left:1.5rem; color:var(--accent-blue);">
+                {% for col in entity.research_collections.all %}
+                <li><strong>{{ col.name }}</strong>: {{ col.description }}</li>
+                {% empty %}
+                <li style="color:var(--text-muted); list-style:none; padding-left:0;">No active research collections track this entity.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- TAB 9: DUPLICATES & AUDITING -->
+    <div id="tab-duplicates" class="tab-content">
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Potential Duplicates & Merge Diagnostics</h3>
+            <p style="color:var(--text-muted); margin-bottom:1rem;">System match candidates with high fuzzy Jaro-Winkler name similarity scores:</p>
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>Candidate Entity</th>
+                        <th>Fuzzy Similarity Score</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cand in entity.match_candidates_as_1.all %}
+                    <tr>
+                        <td><strong>{{ cand.entity_2.canonical_name }}</strong></td>
+                        <td style="font-family:monospace;">{{ cand.match_score }}%</td>
+                        <td>
+                            <form method="post" action="/extraction/merge/{{ entity.id }}/">
+                                {% csrf_token %}
+                                <input type="hidden" name="target_entity_id" value="{{ cand.entity_2.id }}">
+                                <button type="submit" class="btn" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Execute Merge</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No active clashing name matches registered in duplicate review indices.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<script>
+    function showTab(evt, tabId) {
+        // Hide all tab content
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        
+        // Remove active class from all buttons
+        tablinks = document.getElementsByClassName("tab-btn");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+        
+        // Show current tab content and add active class to clicked button
+        document.getElementById(tabId).style.display = "block";
+        evt.currentTarget.classList.add("active");
+    }
+</script>
 {% endblock %}

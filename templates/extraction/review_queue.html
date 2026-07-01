@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+
+{% block title %}Unified Review Queue - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Unified Review Queue</h2>
+    <p style="color:var(--text-muted); font-size:0.9rem;">Review and verify campaign contributions, candidate match proposals, draft assertions, and provisional identities.</p>
+</div>
+
+<!-- Tabs selector for review categories -->
+<div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem;">
+    <button class="btn btn-primary" onclick="showQueueTab(event, 'q-contributions')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Contributions ({{ contributions|length }})</button>
+    <button class="btn btn-secondary" onclick="showQueueTab(event, 'q-matches')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Match Proposals ({{ matches|length }})</button>
+    <button class="btn btn-secondary" onclick="showQueueTab(event, 'q-assertions')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Assertions ({{ assertions|length }})</button>
+    <button class="btn btn-secondary" onclick="showQueueTab(event, 'q-provisional')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:20px;">Provisional Entities ({{ provisional_entities|length }})</button>
+</div>
+
+<!-- Category 1: Contributions -->
+<div id="q-contributions" class="queue-tab-content" style="display:block;">
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Transactions Awaiting Verification</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Donor Name</th>
+                    <th>Filer Committee (Recipient)</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Source Document</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for con in contributions %}
+                <tr>
+                    <td><strong>{{ con.donor_raw_name }}</strong></td>
+                    <td><a href="/entity/{{ con.filer_committee.public_id }}/">{{ con.filer_committee.canonical_name }}</a></td>
+                    <td style="font-family:monospace;">{{ con.transaction_date|date:'Y-m-d' }}</td>
+                    <td style="font-family:monospace; color:var(--accent-emerald); font-weight:bold;">${{ con.amount|stringformat:".2f" }}</td>
+                    <td>
+                        {% if con.source %}
+                        <span style="font-size:0.85rem; color:var(--text-muted);">{{ con.source.title|truncatechars:40 }}</span>
+                        {% else %}
+                        <span style="color:var(--text-muted);">No document</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if con.document %}
+                        <a href="/extraction/review/{{ con.document.id }}/" class="btn" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Review Side-by-Side</a>
+                        {% else %}
+                        <span style="color:var(--text-muted);">No page reference</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No transactions awaiting review.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Category 2: Match Proposals -->
+<div id="q-matches" class="queue-tab-content" style="display:none;">
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Entity Matching Candidates</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Entity 1</th>
+                    <th>Entity 2</th>
+                    <th>Fuzzy Score</th>
+                    <th>Conflicting Fields</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                <tr>
+                    <td><strong>{{ match.entity_1.canonical_name }}</strong> <small>({{ match.entity_1.entity_type }})</small></td>
+                    <td><strong>{{ match.entity_2.canonical_name }}</strong> <small>({{ match.entity_2.entity_type }})</small></td>
+                    <td style="font-family:monospace; font-weight:bold; color:var(--accent-blue);">{{ match.match_score }}%</td>
+                    <td>
+                        {% for f in match.conflicting_fields %}
+                        <code style="background:rgba(244,63,94,0.1); color:var(--accent-rose); padding:0.1rem 0.3rem; margin-right:0.25rem; font-size:0.8rem;">{{ f }}</code>
+                        {% empty %}
+                        <span style="color:var(--accent-emerald);">None</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="/entity/{{ match.entity_1.public_id }}/" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Resolve</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No matching candidate conflicts to resolve.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Category 3: Assertions -->
+<div id="q-assertions" class="queue-tab-content" style="display:none;">
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Draft Assertions Awaiting Approvals</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Predicate</th>
+                    <th>Object / Value</th>
+                    <th>Claim Type</th>
+                    <th>Verification</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ast in assertions %}
+                <tr>
+                    <td><strong>{{ ast.subject_entity.canonical_name }}</strong></td>
+                    <td style="color:var(--accent-emerald); font-weight:bold;">{{ ast.predicate }}</td>
+                    <td>
+                        {% if ast.object_entity %}
+                        <a href="/entity/{{ ast.object_entity.public_id }}/">{{ ast.object_entity.canonical_name }}</a>
+                        {% else %}
+                        {{ ast.object_value }}
+                        {% endif %}
+                    </td>
+                    <td><span class="badge" style="background:#1e293b;">{{ ast.get_claim_type_display }}</span></td>
+                    <td><span class="badge badge-proposed">{{ ast.get_verification_status_display }}</span></td>
+                    <td>
+                        <a href="/assertions/edit/{{ ast.id }}/" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Verify / Edit</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No draft assertions awaiting review.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Category 4: Provisional Entities -->
+<div id="q-provisional" class="queue-tab-content" style="display:none;">
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Provisional Entities</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Provisional entities are automatically generated during filing parses. Verify or merge them into canonical profiles.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Public ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Jurisdiction</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ent in provisional_entities %}
+                <tr>
+                    <td style="font-family:monospace; font-size:0.85rem;">{{ ent.public_id }}</td>
+                    <td><strong>{{ ent.canonical_name }}</strong></td>
+                    <td><span class="badge" style="background:#1e293b; color:#fff;">{{ ent.entity_type }}</span></td>
+                    <td>{{ ent.jurisdiction }}</td>
+                    <td>
+                        <a href="/entity/{{ ent.public_id }}/" class="btn" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Open Workspace</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No provisional auto-created entities need review.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function showQueueTab(evt, tabId) {
+        // Hide all tabs
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("queue-tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        
+        // Remove primary class, set secondary
+        tablinks = evt.currentTarget.parentNode.getElementsByTagName("button");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("btn-primary");
+            tablinks[i].classList.add("btn-secondary");
+        }
+        
+        // Show current tab content and set button class
+        document.getElementById(tabId).style.display = "block";
+        evt.currentTarget.classList.remove("btn-secondary");
+        evt.currentTarget.classList.add("btn-primary");
+    }
+</script>
+{% endblock %}

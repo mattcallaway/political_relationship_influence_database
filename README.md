@@ -49,8 +49,8 @@ Supports Form 460 cover page, Schedule A (Contributions), and Schedule E (Expend
 ## 11. General Document Ingestion Workflow
 Non-460 documents (minutes, staff reports, contracts, PRAs) undergo upload classification, SHA-256 hashing, text extraction, and manual highlighting.
 
-## 12. Human-Review Requirements
-All machine extractions must be approved by an authorized reviewer before promotion into the authoritative database.
+## 12. Human-Review and Status Requirements
+The central database contains records at different stages of confidence and review. Automatic matching is used to make incoming filings immediately useful. Review status, provenance, confidence, and audit history allow users to distinguish provisional machine-assisted records from human-verified records. Reviewers confirm, correct, rematch, merge, split, or reject records directly inside the central database, leaving a complete audit trail.
 
 ## 13. Entity Resolution and Duplicate Handling
 Conservative fuzzy matching scores recommendations but strictly requires human review for entity merges. Merges preserve legacy IDs as aliases.

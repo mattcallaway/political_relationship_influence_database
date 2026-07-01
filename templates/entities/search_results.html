@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:2rem;">
+    <h2 style="font-family:'Outfit', sans-serif;">Full Database Unified Search</h2>
+    <form method="get" action="/search/" style="display:flex; gap:0.5rem; margin-top:1rem;">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search entities, aliases, FPPC IDs, agenda items, contracts, OCR text..." style="flex:1; padding:0.75rem 1rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary); color:#fff; font-size:1rem;">
+        <button type="submit" class="btn" style="padding:0.75rem 1.5rem; font-size:1rem;">Search</button>
+        <button type="submit" name="save_search" value="true" class="btn btn-secondary" style="padding:0.75rem 1rem; font-size:1rem;">Save Search</button>
+    </form>
+</div>
+
+{% if query %}
+    <p style="color:var(--text-muted); margin-bottom:1.5rem;">Results for: <strong>"{{ query }}"</strong></p>
+
+    <!-- Grouped Results -->
+    {% if results.entities or results.documents or results.assertions or results.contributions or results.lobbying or results.contracts or results.meetings or results.votes %}
+        
+        <!-- 1. Entities & Aliases -->
+        {% if results.entities %}
+        <div class="card" style="margin-bottom:1.5rem;">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:var(--accent-blue);">Entities & Aliases ({{ results.entities|length }})</h3>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                {% for ent in results.entities %}
+                <div>
+                    <a href="/entity/{{ ent.public_id }}/" style="font-weight:bold; color:#fff; text-decoration:none;">{{ ent.canonical_name }}</a>
+                    <span class="badge badge-verified" style="font-size:0.7rem; margin-left:0.5rem;">{{ ent.entity_type }}</span>
+                    <span class="badge" style="font-size:0.7rem; background:rgba(255,255,255,0.05); color:var(--text-muted);">{{ ent.status }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 2. Documents & OCR Text -->
+        {% if results.documents %}
+        <div class="card" style="margin-bottom:1.5rem;">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:var(--accent-blue);">Documents & Ingested Files ({{ results.documents|length }})</h3>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                {% for doc in results.documents %}
+                <div>
+                    <a href="/documents/" style="font-weight:bold; color:#fff; text-decoration:none;">{{ doc.original_filename }}</a>
+                    <span class="badge badge-proposed" style="font-size:0.7rem; margin-left:0.5rem;">{{ doc.document_type }}</span>
+                    <span style="font-size:0.8rem; color:var(--text-muted); display:block; margin-top:0.1rem;">SHA256: {{ doc.sha256_hash|slice:":10" }}...</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 3. Transactions Ledger -->
+        {% if results.contributions %}
+        <div class="card" style="margin-bottom:1.5rem;">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:var(--accent-blue);">Campaign Finance ({{ results.contributions|length }})</h3>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                {% for con in results.contributions %}
+                <div>
+                    <strong style="color:var(--accent-emerald);">${{ con.amount }}</strong> contributed by <strong>{{ con.donor_raw_name }}</strong> to {{ con.filer_committee.canonical_name }}
+                    <span style="font-size:0.8rem; color:var(--text-muted); display:block;">Date: {{ con.transaction_date|default:"Unspecified" }} &bull; Schedule: {{ con.schedule }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 4. Lobbying Disclosures -->
+        {% if results.lobbying %}
+        <div class="card" style="margin-bottom:1.5rem;">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:var(--accent-blue);">Lobbying Disclosures ({{ results.lobbying|length }})</h3>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                {% for lob in results.lobbying %}
+                <div>
+                    <strong>{{ lob.lobbyist_entity.canonical_name }}</strong> representing client <strong>{{ lob.client_entity.canonical_name }}</strong>
+                    <br><span style="font-size:0.85rem; color:var(--text-muted);">Reporting Period: {{ lob.reporting_period }} &bull; Matter: {{ lob.matters_described|truncatechars:100 }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 5. Government Contracts -->
+        {% if results.contracts %}
+        <div class="card" style="margin-bottom:1.5rem;">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:var(--accent-blue);">Government Contracts ({{ results.contracts|length }})</h3>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                {% for ctr in results.contracts %}
+                <div>
+                    <strong>{{ ctr.contract_title }}</strong> with vendor <strong>{{ ctr.vendor_entity.canonical_name }}</strong>
+                    <br><span style="font-size:0.85rem; color:var(--text-muted);">Executed: {{ ctr.execution_date|default:"-" }} &bull; Amount: ${{ ctr.amount|stringformat:".2f" }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 6. Public Meetings & Votes -->
+        {% if results.meetings or results.votes %}
+        <div class="card" style="margin-bottom:1.5rem;">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:var(--accent-blue);">Public Meetings & Voting Records</h3>
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                {% for meet in results.meetings %}
+                <div>
+                    <span class="badge" style="background:#475569; color:#fff;">Meeting</span>
+                    <strong>{{ meet.government_body.body_name }}</strong> on {{ meet.date|date:'Y-m-d' }} at {{ meet.location }}
+                </div>
+                {% endfor %}
+                {% for vote in results.votes %}
+                <div>
+                    <span class="badge badge-verified">Vote</span>
+                    Voted <strong>{{ vote.vote_cast }}</strong> on agenda item: <strong>{{ vote.item_title }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <div class="card" style="text-align:center; padding:3rem 0; color:var(--text-muted);">
+            No records matched your search query. Try broadening your terms or upload a new source document.
+        </div>
+    {% endif %}
+
+{% else %}
+    <!-- Saved Searches List -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Recently Saved Search Queries</h3>
+        <ul style="list-style:none; padding:0;">
+            {% for search in saved_searches %}
+            <li style="padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+                <a href="/search/?q={{ search.query_string|urlencode }}" style="font-weight:bold; color:var(--accent-blue); text-decoration:none;">
+                    {{ search.name }}
+                </a>
+                <span style="font-size:0.75rem; color:var(--text-muted);">Saved: {{ search.created_at|date:'Y-m-d' }}</span>
+            </li>
+            {% empty %}
+            <li style="color:var(--text-muted); font-style:italic;">No saved searches logged yet. Keep track of complex queries by clicking "Save Search".</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+{% endblock %}

@@ -23,12 +23,14 @@ class ResearchTask(models.Model):
     status = models.CharField(max_length=30, default='OPEN')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    collection = models.ForeignKey('ResearchCollection', on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
 
 class OpenQuestion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     question_text = models.TextField()
     related_entity = models.ForeignKey(Entity, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(max_length=30, default='OPEN')
+    collection = models.ForeignKey('ResearchCollection', on_delete=models.SET_NULL, null=True, blank=True, related_name='questions')
 
 class PRARequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -38,6 +40,7 @@ class PRARequest(models.Model):
     submission_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=50, default='DRAFT')
     tracking_number = models.CharField(max_length=100, blank=True)
+    collection = models.ForeignKey('ResearchCollection', on_delete=models.SET_NULL, null=True, blank=True, related_name='pra_requests')
 
 class EntityMatchCandidate(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -74,3 +77,28 @@ class ResearchLocation(models.Model):
     priority = models.CharField(max_length=20, default='MEDIUM')
     access_notes = models.TextField(blank=True)
     status = models.CharField(max_length=30, default='ACTIVE')
+
+class ResearchCollection(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    
+    entities = models.ManyToManyField('entities.Entity', blank=True, related_name='research_collections')
+    sources = models.ManyToManyField('sources.Source', blank=True, related_name='research_collections')
+    contributions = models.ManyToManyField('transactions.Contribution', blank=True, related_name='research_collections')
+    assertions = models.ManyToManyField('assertions.Assertion', blank=True, related_name='research_collections')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='research_collections')
+
+    def __str__(self):
+        return self.name
+
+class SavedSearch(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    query_string = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.query_string})"

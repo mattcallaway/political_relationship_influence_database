@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Multi-Entity Path Comparison{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Multi-Entity Comparison & Path Analyzer</h2>
+    <p style="color:var(--text-muted); font-size:0.9rem;">Trace direct and indirect connections, overlapping campaign finance sources, or shared contract vendors between two entities.</p>
+</div>
+
+<!-- Select forms -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <form method="get" action="/research/compare/" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:1.5rem; align-items:flex-end;">
+        <div>
+            <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.85rem; color:var(--text-muted);">SELECT ENTITY A</label>
+            <select name="entity_a" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.9rem;">
+                <option value="">-- Choose first entity --</option>
+                {% for ent in entities %}
+                <option value="{{ ent.id }}" {% if entity_a and ent.id == entity_a.id %}selected{% endif %}>{{ ent.canonical_name }} ({{ ent.entity_type }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.85rem; color:var(--text-muted);">SELECT ENTITY B</label>
+            <select name="entity_b" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-size:0.9rem;">
+                <option value="">-- Choose second entity --</option>
+                {% for ent in entities %}
+                <option value="{{ ent.id }}" {% if entity_b and ent.id == entity_b.id %}selected{% endif %}>{{ ent.canonical_name }} ({{ ent.entity_type }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn" style="padding:0.6rem 1.5rem; font-size:0.9rem;">Analyze Paths</button>
+    </form>
+</div>
+
+{% if entity_a and entity_b %}
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+    <!-- Side A Details -->
+    <div class="card" style="border-top:3px solid var(--accent-blue);">
+        <h3 style="margin-bottom:0.5rem;"><a href="/entity/{{ entity_a.public_id }}/" style="color:#fff; text-decoration:none;">{{ entity_a.canonical_name }}</a></h3>
+        <p style="font-size:0.85rem; color:var(--text-muted);">Type: {{ entity_a.get_entity_type_display }} &bull; Jurisdiction: {{ entity_a.jurisdiction }}</p>
+    </div>
+
+    <!-- Side B Details -->
+    <div class="card" style="border-top:3px solid var(--accent-emerald);">
+        <h3 style="margin-bottom:0.5rem;"><a href="/entity/{{ entity_b.public_id }}/" style="color:#fff; text-decoration:none;">{{ entity_b.canonical_name }}</a></h3>
+        <p style="font-size:0.85rem; color:var(--text-muted);">Type: {{ entity_b.get_entity_type_display }} &bull; Jurisdiction: {{ entity_b.jurisdiction }}</p>
+    </div>
+</div>
+
+<!-- Path analysis sections -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+    <!-- Direct Connections -->
+    <div class="card">
+        <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; color:#fff; font-size:1.1rem;">Direct Relationship Assertions</h3>
+        <ul style="padding-left:1.5rem; display:flex; flex-direction:column; gap:0.5rem; font-size:0.95rem;">
+            {% for ast in direct_assertions %}
+            <li>
+                <strong>{{ ast.subject_entity.canonical_name }}</strong>
+                <code style="color:var(--accent-emerald); font-weight:bold;">{{ ast.predicate }}</code>
+                <strong>{% if ast.object_entity %}{{ ast.object_entity.canonical_name }}{% else %}{{ ast.object_value }}{% endif %}</strong>
+                <br><span style="font-size:0.8rem; color:var(--text-muted);">Claim type: {{ ast.claim_type }} &bull; Status: {{ ast.verification_status }}</span>
+            </li>
+            {% empty %}
+            <li style="color:var(--text-muted); list-style:none; padding-left:0; font-style:italic;">No direct assertions linking these two entities.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Shared Indirect Neighbors -->
+    <div class="card">
+        <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; color:#fff; font-size:1.1rem;">Shared Intermediate Entities (Indirect Paths)</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Entities that have documented assertions with both selected targets.</p>
+        <ul style="padding-left:1.5rem; display:flex; flex-direction:column; gap:0.5rem; font-size:0.95rem;">
+            {% for neigh in shared_neighbors %}
+            <li>
+                <a href="/entity/{{ neigh.public_id }}/" style="font-weight:bold; color:var(--accent-blue); text-decoration:none;">{{ neigh.canonical_name }}</a>
+                <span class="badge" style="background:#1e293b; color:#fff; font-size:0.75rem; margin-left:0.5rem;">{{ neigh.entity_type }}</span>
+            </li>
+            {% empty %}
+            <li style="color:var(--text-muted); list-style:none; padding-left:0; font-style:italic;">No intermediate entity nodes link A and B.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+{% else %}
+<div class="card" style="text-align:center; padding:3.5rem 0; color:var(--text-muted);">
+    Please select two entities from the dropdowns above and click "Analyze Paths" to compile relationship traces.
+</div>
+{% endif %}
+{% endblock %}

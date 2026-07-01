@@ -1,14 +1,21 @@
 import uuid
 from django.db import models
+from django.conf import settings
 from apps.entities.models import Entity
 from apps.sources.models import Source
 from apps.documents.models import DocumentPage
 
 class ReviewStatus(models.TextChoices):
+    AUTO_IMPORTED = 'AUTO_IMPORTED', 'Auto Imported'
+    AUTO_MATCHED = 'AUTO_MATCHED', 'Auto Matched'
+    NEEDS_REVIEW = 'NEEDS_REVIEW', 'Needs Review'
+    REVIEWED = 'REVIEWED', 'Reviewed'
+    VERIFIED = 'VERIFIED', 'Verified'
+    SUPERSEDED = 'SUPERSEDED', 'Superseded'
+    REJECTED = 'REJECTED', 'Rejected'
     PROPOSED = 'PROPOSED', 'Proposed / Machine Extracted'
     APPROVED = 'APPROVED', 'Approved by Reviewer'
     CORRECTED = 'CORRECTED', 'Corrected by Reviewer'
-    REJECTED = 'REJECTED', 'Rejected'
 
 class Contribution(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -31,7 +38,12 @@ class Contribution(models.Model):
     source = models.ForeignKey(Source, on_delete=models.SET_NULL, null=True, blank=True)
     document_page = models.ForeignKey(DocumentPage, on_delete=models.SET_NULL, null=True, blank=True)
     source_locator = models.CharField(max_length=100, blank=True)
-    review_status = models.CharField(max_length=30, choices=ReviewStatus.choices, default=ReviewStatus.PROPOSED)
+    review_status = models.CharField(max_length=30, choices=ReviewStatus.choices, default=ReviewStatus.AUTO_IMPORTED)
+    
+    document = models.ForeignKey('documents.Document', on_delete=models.CASCADE, null=True, blank=True, related_name='contributions')
+    extracted_block = models.ForeignKey('extraction.ExtractedContributorBlock', on_delete=models.SET_NULL, null=True, blank=True, related_name='contributions')
+    import_batch = models.ForeignKey('audit.ImportBatch', on_delete=models.SET_NULL, null=True, blank=True, related_name='contributions')
+    match_attempt = models.ForeignKey('extraction.EntityMatchAttempt', on_delete=models.SET_NULL, null=True, blank=True, related_name='linked_contributions')
 
     def __str__(self):
         return f"{self.public_id}: ${self.amount} from {self.donor_raw_name}"
@@ -85,3 +97,17 @@ class LobbyingActivity(models.Model):
     reporting_period = models.CharField(max_length=50, blank=True)
     compensation_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     matters_described = models.TextField(blank=True)
+
+class AuditEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=100) # e.g. MATCH_CONFIRMED, MATCH_OVERRIDDEN, MERGE, REPROCESSING
+    table_name = models.CharField(max_length=100)
+    record_id = models.CharField(max_length=100)
+    prior_value = models.JSONField(null=True, blank=True)
+    new_value = models.JSONField(null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    reason = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"AuditEvent {self.action} on {self.table_name}:{self.record_id} at {self.timestamp}"

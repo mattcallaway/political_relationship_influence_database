@@ -40,9 +40,28 @@ class Source(models.Model):
     notes = models.TextField(blank=True)
     reliability = models.CharField(max_length=50, choices=ReliabilityClassification.choices, default=ReliabilityClassification.OFFICIAL_PUBLIC_RECORD)
     privacy_classification = models.CharField(max_length=50, choices=PrivacyClassification.choices, default=PrivacyClassification.PUBLIC)
+    filing_date = models.DateField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.public_id} - {self.title}"
+
+class SourceLocator(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    source = models.ForeignKey(Source, on_delete=models.CASCADE, related_name='locators')
+    document = models.ForeignKey('documents.Document', on_delete=models.SET_NULL, null=True, blank=True, related_name='locators')
+    page = models.ForeignKey('documents.DocumentPage', on_delete=models.SET_NULL, null=True, blank=True, related_name='locators')
+    page_range = models.CharField(max_length=50, blank=True)
+    bounding_box_json = models.JSONField(null=True, blank=True, help_text="[vx0, vy0, vx1, vy1]")
+    section = models.CharField(max_length=100, blank=True)
+    table_identifier = models.CharField(max_length=100, blank=True)
+    agenda_item = models.CharField(max_length=50, blank=True)
+    filing_schedule = models.CharField(max_length=50, blank=True)
+    locator_description = models.TextField(blank=True)
+
+    def __str__(self):
+        page_num = self.page.page_number if self.page else "N/A"
+        return f"Locator for {self.source.public_id} - Page {page_num}"

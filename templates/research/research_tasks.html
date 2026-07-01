@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Research Tasks & Questions{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:2rem;">
+    <h2>Research Tasks, Questions & PRA Tracker</h2>
+    <p style="color:var(--text-muted);">Manage current public-records request campaigns, active investigations, and pending research items.</p>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+    <!-- Research Tasks -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Active Research Tasks</h3>
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Task Title</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr>
+                    <td><strong>{{ task.task_title }}</strong></td>
+                    <td><span class="badge badge-proposed">{{ task.priority }}</span></td>
+                    <td><span class="badge badge-verified">{{ task.status }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No active tasks assigned.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Open Questions -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Investigative Questions</h3>
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Question</th>
+                    <th>Related Entity</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in questions %}
+                <tr>
+                    <td>{{ q.question_text }}</td>
+                    <td>
+                        {% if q.related_entity %}
+                        <a href="/entity/{{ q.related_entity.public_id }}/">{{ q.related_entity.canonical_name }}</a>
+                        {% else %}
+                        <span style="color:var(--text-muted);">None</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-proposed">{{ q.status }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No pending questions logged.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- PRA Requests -->
+<div class="card">
+    <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Public Records Act (PRA) Request Logs</h3>
+    <table style="width:100%;">
+        <thead>
+            <tr>
+                <th>Tracking #</th>
+                <th>Target Agency</th>
+                <th>Request Summary</th>
+                <th>Submission Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pra in pras %}
+            <tr>
+                <td style="font-family:monospace; font-weight:bold;">{{ pra.tracking_number|default:"-" }}</td>
+                <td><strong>{{ pra.target_agency }}</strong></td>
+                <td>{{ pra.request_summary }}</td>
+                <td>{{ pra.submission_date|date:'Y-m-d'|default:"-" }}</td>
+                <td><span class="badge badge-verified">{{ pra.status }}</span></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="color:var(--text-muted); text-align:center; padding:2rem 0;">No active PRA requests logged.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

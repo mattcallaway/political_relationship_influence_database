@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Assertion - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:2rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Create Evidentiary Graph Assertion</h2>
+    <p style="color:var(--text-muted); font-size:0.9rem;">Document a relationship connection or interpretive claim between a subject entity and an object entity or value.</p>
+</div>
+
+<form method="post" action="/assertions/create/">
+    {% csrf_token %}
+    <div style="display:grid; grid-template-columns:2fr 1fr; gap:2rem; align-items:flex-start;">
+        
+        <!-- Assertion details card -->
+        <div class="card">
+            <h3 style="margin-bottom:1.5rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff;">Relationship Metrics</h3>
+            
+            <div style="margin-bottom:1.25rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Subject Entity *</label>
+                <select name="subject_entity" required style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                    <option value="">-- Select Subject Entity --</option>
+                    {% for ent in entities %}
+                    <option value="{{ ent.id }}">{{ ent.canonical_name }} ({{ ent.entity_type }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom:1.25rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Predicate Code (Relationship type) *</label>
+                <select name="predicate" required style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                    <option value="">-- Select Relationship Predicate --</option>
+                    {% for pred in predicates %}
+                    <option value="{{ pred.predicate_code }}">{{ pred.label }} ({{ pred.predicate_code }})</option>
+                    {% empty %}
+                    <option value="PRINCIPAL_OF">Principal of</option>
+                    <option value="EMPLOYEE_OF">Employee of</option>
+                    <option value="CONSULTANT_TO">Consultant to</option>
+                    <option value="CONTRIBUTOR_TO">Contributor to</option>
+                    <option value="MEMBER_OF">Member of</option>
+                    <option value="APPOINTED_BY">Appointed by</option>
+                    <option value="CONTRACTOR_TO">Contractor to</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom:1.25rem; display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Object Entity</label>
+                    <select name="object_entity" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                        <option value="">-- None (Literal value below instead) --</option>
+                        {% for ent in entities %}
+                        <option value="{{ ent.id }}">{{ ent.canonical_name }} ({{ ent.entity_type }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Object Literal Value</label>
+                    <input type="text" name="object_value" placeholder="e.g. $10,000.00 or specific description" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.25rem; display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Claim Type</label>
+                    <select name="claim_type" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                        {% for code, label in claim_types %}
+                        <option value="{{ code }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Jurisdiction</label>
+                    <input type="text" name="jurisdiction" value="Sonoma County" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.25rem; display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Effective Start Date</label>
+                    <input type="date" name="effective_start" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Effective End Date</label>
+                    <input type="date" name="effective_end" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.25rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Explanatory Note</label>
+                <textarea name="explanatory_note" placeholder="Provide background analysis detailing why this connection is documented." style="width:100%; height:100px; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-family:inherit;"></textarea>
+            </div>
+
+            <div style="margin-top:1.5rem; display:flex; gap:1rem;">
+                <button type="submit" class="btn" style="padding:0.75rem 1.5rem;">Save Assertion</button>
+                <a href="/assertions/" class="btn btn-secondary" style="padding:0.75rem 1.5rem;">Cancel</a>
+            </div>
+        </div>
+
+        <!-- Evidentiary Coordinate Locator card -->
+        <div class="card">
+            <h3 style="margin-bottom:1.5rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff;">Source Coordinate Reference</h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Attach a specific document coordinate locator to satisfy the evidence requirements.</p>
+
+            <div style="margin-bottom:1.25rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Sourced Filing Document</label>
+                <select name="source" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                    <option value="">-- Select Source Document --</option>
+                    {% for src in sources %}
+                    <option value="{{ src.id }}">{{ src.public_id }} - {{ src.title|truncatechars:40 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom:1.25rem; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Page / Page Range</label>
+                    <input type="text" name="page_num" placeholder="e.g. Page 12" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Section / Schedule</label>
+                    <input type="text" name="section" placeholder="e.g. Schedule A" style="width:100%; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.25rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:600; font-size:0.9rem;">Coordinate Highlight / Evidence Note</label>
+                <textarea name="evidence_note" placeholder="Note down text excerpt or coordinate references (e.g. 'Paragraph 2 column 3')." style="width:100%; height:80px; padding:0.6rem; border-radius:6px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; font-family:inherit; font-size:0.85rem;"></textarea>
+            </div>
+
+            <div style="margin-bottom:1.25rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; font-weight:600; font-size:0.9rem; cursor:pointer;">
+                    <input type="checkbox" name="sensitive_claim" value="true">
+                    <span>Sensitive Claim (Needs Manager Approval)</span>
+                </label>
+            </div>
+        </div>
+
+    </div>
+</form>
+{% endblock %}

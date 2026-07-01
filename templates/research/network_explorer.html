@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Network Explorer - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Civic Network Explorer</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">Interactive node-edge graph representation of candidate campaigns, organizations, and public relationships.</p>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="/research/compare/" class="btn btn-secondary" style="font-size:0.85rem;">Multi-Entity Comparison</a>
+            <button onclick="cy.layout({ name: 'cose', animate: true }).run()" class="btn" style="font-size:0.85rem;">Re-Layout Graph</button>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:3fr 1fr; gap:1.5rem; align-items:stretch;">
+    <!-- Cytoscape Canvas -->
+    <div class="card" style="padding:0; position:relative; min-height:600px; background:#0b0f19;">
+        <div id="cy" style="width:100%; height:100%; min-height:600px; position:absolute; top:0; left:0;"></div>
+    </div>
+
+    <!-- Sidebar Detail Panel -->
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+        <div class="card">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:#fff;">Graph Legends</h3>
+            
+            <h4 style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem;">Entity Nodes</h4>
+            <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem; margin-bottom:1.5rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#38bdf8;"></span><span>People (PERSON)</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#34d399;"></span><span>Organizations (ORG)</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#fbbf24;"></span><span>Campaigns</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#a78bfa;"></span><span>Projects</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#f43f5e;"></span><span>Government Bodies</span></div>
+            </div>
+
+            <h4 style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem;">Assertion Edges</h4>
+            <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#475569;"></span><span>Standard Factual Assertion</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#f43f5e; border-style:dashed;"></span><span>Sensitive Claims</span></div>
+            </div>
+        </div>
+
+        <div class="card" id="detail-card">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:#fff;">Selection Details</h3>
+            <p id="detail-placeholder" style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">Click on a node or relationship edge inside the graph to inspect metadata and provenance locators.</p>
+            <div id="detail-content" style="display:none; font-size:0.9rem;">
+                <h4 id="node-name" style="font-size:1.2rem; color:#fff; margin-bottom:0.25rem;"></h4>
+                <p id="node-type" style="color:var(--accent-blue); font-size:0.8rem; text-transform:uppercase; font-weight:bold; margin-bottom:0.75rem;"></p>
+                <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:0.5rem;">
+                    <div><span style="color:var(--text-muted);">Status:</span> <strong id="node-status"></strong></div>
+                    <a id="node-link" href="#" class="btn btn-secondary" style="padding:0.4rem; font-size:0.8rem; text-align:center; display:block; margin-top:1rem;">View Profile Hub</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var elements = {{ elements_json|safe }};
+    
+    var cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: elements,
+        style: [
+            {
+                selector: 'node',
+                style: {
+                    'label': 'data(label)',
+                    'color': '#f8fafc',
+                    'font-size': '10px',
+                    'text-valign': 'bottom',
+                    'text-margin-y': '6px',
+                    'background-color': function(ele) {
+                        var type = ele.data('type');
+                        if (type === 'PERSON') return '#38bdf8';
+                        if (type === 'ORGANIZATION') return '#34d399';
+                        if (type === 'CAMPAIGN') return '#fbbf24';
+                        if (type === 'DEVELOPMENT_PROJECT') return '#a78bfa';
+                        if (type === 'GOVERNMENT_BODY') return '#f43f5e';
+                        return '#64748b';
+                    },
+                    'width': '20px',
+                    'height': '20px'
+                }
+            },
+            {
+                selector: 'edge',
+                style: {
+                    'width': 2,
+                    'label': 'data(label)',
+                    'font-size': '8px',
+                    'color': '#94a3b8',
+                    'edge-text-rotation': 'autorotate',
+                    'line-color': '#475569',
+                    'target-arrow-color': '#475569',
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'bezier'
+                }
+            },
+            {
+                selector: 'edge[claim_type="ALLEGATION"]',
+                style: {
+                    'line-style': 'dashed',
+                    'line-color': '#f43f5e',
+                    'target-arrow-color': '#f43f5e'
+                }
+            }
+        ],
+        layout: {
+            name: 'cose',
+            padding: 40,
+            animate: false
+        }
+    });
+
+    // Handle clicks
+    cy.on('tap', 'node', function(evt){
+        var node = evt.target;
+        document.getElementById('detail-placeholder').style.display = 'none';
+        var content = document.getElementById('detail-content');
+        content.style.display = 'block';
+        
+        document.getElementById('node-name').innerText = node.data('label');
+        document.getElementById('node-type').innerText = node.data('type');
+        document.getElementById('node-status').innerText = node.data('status');
+        document.getElementById('node-link').href = '/entity/' + node.data('id') + '/';
+    });
+
+    cy.on('tap', function(evt){
+        if(evt.target === cy){
+            document.getElementById('detail-placeholder').style.display = 'block';
+            document.getElementById('detail-content').style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

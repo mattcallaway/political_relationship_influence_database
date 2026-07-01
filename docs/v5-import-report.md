@@ -1,0 +1,27 @@
+# V5 Consolidated Workbook Import Report
+
+- **Import Time**: 2026-07-01 00:16:54
+- **Dry Run Mode**: False
+- **Total Rows Failed**: 0
+
+## Imported Counts By Sheet
+
+| Sheet Name | Successful Imports Count |
+| :--- | :--- |
+| Sources | 0 |
+| Entity_Index | 0 |
+| People | 0 |
+| Organizations | 0 |
+| Aliases | 5 |
+| Campaigns | 8 |
+| Committees | 0 |
+| Projects | 9 |
+| Government_Bodies | 3 |
+| Public_Offices | 0 |
+| Assertions | 18 |
+| Assertion_Sources | 23 |
+| Appointments | 1 |
+| Contracts | 1 |
+| Events | 3 |
+| Research_Queue | 21 |
+| PRA_Requests | 2 |

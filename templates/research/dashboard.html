@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Research & Quality Dashboard - Sonoma County Political Relationship Database{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:2rem; display:flex; justify-content:space-between; align-items:center;">
+    <div>
+        <h2 style="font-family:'Outfit', sans-serif; font-size:1.8rem; font-weight:700; color:#fff;">Civic Research & System Diagnostics</h2>
+        <p style="color:var(--text-muted); font-size:0.95rem; margin-top:0.25rem;">A multi-dimensional analytical view of campaign financing, lobbying, government decisions, and evidentiary graph connections.</p>
+    </div>
+    <span class="badge" style="background:#1e293b; border:1px solid var(--border-color); color:#fff; font-size:0.8rem; padding:0.4rem 0.8rem;">
+        Database Status: <strong>ONLINE</strong>
+    </span>
+</div>
+
+<!-- SECTION 1: DATABASE SUMMARY (Base Counts) -->
+<h3 style="font-family:'Outfit', sans-serif; color:#f1f5f9; font-size:1.1rem; margin-bottom:1rem;">Database Scope Summary</h3>
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1.25rem; margin-bottom:2.5rem;">
+    <a href="/" class="card" style="text-decoration:none; transition:transform 0.2s; display:block;">
+        <h4 style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Total Entities</h4>
+        <strong style="font-size:2rem; color:#fff; display:block;">{{ total_entities }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">{{ total_people }} people &bull; {{ total_organizations }} orgs</span>
+    </a>
+    <a href="/transactions/" class="card" style="text-decoration:none; transition:transform 0.2s; display:block;">
+        <h4 style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Transactions</h4>
+        <strong style="font-size:2rem; color:#fff; display:block;">{{ total_contributions }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">{{ total_expenditures }} expenditures</span>
+    </a>
+    <a href="/government/" class="card" style="text-decoration:none; transition:transform 0.2s; display:block;">
+        <h4 style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Gov Decisions</h4>
+        <strong style="font-size:2rem; color:#fff; display:block;">{{ total_votes }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">{{ total_meetings }} meetings &bull; {{ total_gov_bodies }} boards</span>
+    </a>
+    <a href="/assertions/" class="card" style="text-decoration:none; transition:transform 0.2s; display:block;">
+        <h4 style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Graph Assertions</h4>
+        <strong style="font-size:2rem; color:#fff; display:block;">{{ total_assertions }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">Direct evidentiary relationships</span>
+    </a>
+    <a href="/documents/" class="card" style="text-decoration:none; transition:transform 0.2s; display:block;">
+        <h4 style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Ingested Sources</h4>
+        <strong style="font-size:2rem; color:#fff; display:block;">{{ total_docs }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">{{ total_sources }} unique publications</span>
+    </a>
+</div>
+
+<!-- SECTION 2: REVIEWS, ACTIVITIES, AND QUALITY -->
+<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1.5rem; margin-bottom:2.5rem; align-items:flex-start;">
+    
+    <!-- CARD 1: Review Status Metrics -->
+    <div class="card" style="padding:1.5rem;">
+        <h3 style="font-family:'Outfit', sans-serif; margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Review & Confidence States</h3>
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Verified Entities</span>
+                <span class="badge" style="background:var(--accent-emerald); color:#fff; font-family:monospace;">{{ entities_verified }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Reviewed & Approved Orgs</span>
+                <span class="badge" style="background:var(--accent-blue); color:#fff; font-family:monospace;">{{ entities_reviewed }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Auto-Matched (Pending Review)</span>
+                <span class="badge" style="background:#475569; color:#fff; font-family:monospace;">{{ entities_auto_matched }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Provisional Auto-Created</span>
+                <span class="badge" style="background:var(--accent-amber); color:#fff; font-family:monospace;">{{ entities_provisional }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Rejected / Excluded Records</span>
+                <span class="badge" style="background:var(--accent-rose); color:#fff; font-family:monospace;">{{ entities_rejected }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Pending Duplicate Reviews</span>
+                <span class="badge" style="background:var(--accent-amber); color:#fff; font-family:monospace;">{{ possible_duplicates }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARD 2: Investigator Activity -->
+    <div class="card" style="padding:1.5rem;">
+        <h3 style="font-family:'Outfit', sans-serif; margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Research Activities</h3>
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <a href="/research/tasks/" style="display:flex; justify-content:space-between; align-items:center; text-decoration:none; color:inherit;">
+                <span style="font-size:0.9rem; color:var(--accent-blue);">Open Research Tasks</span>
+                <span class="badge" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:#fff;">{{ open_tasks }}</span>
+            </a>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">High-Priority Gaps</span>
+                <span class="badge" style="background:var(--accent-rose); color:#fff;">{{ high_priority_tasks }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Active Research Collections</span>
+                <span class="badge" style="background:var(--accent-emerald); color:#fff;">{{ total_collections }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Pending PRA Public Requests</span>
+                <span class="badge" style="background:var(--accent-amber); color:#fff;">{{ pending_pras }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Disputed Assertions</span>
+                <span class="badge" style="background:var(--accent-rose); color:#fff;">{{ disputed_assertions }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARD 3: Data Quality Warnings -->
+    <div class="card" style="padding:1.5rem;">
+        <h3 style="font-family:'Outfit', sans-serif; margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Data Integrity Diagnostics</h3>
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <a href="/research/data-quality/" style="display:flex; justify-content:space-between; align-items:center; text-decoration:none; color:inherit;">
+                <span style="font-size:0.9rem; color:{% if assertions_no_source > 0 %}var(--accent-rose){% else %}var(--text-primary){% endif %};">Assertions Without Sources</span>
+                <span class="badge" style="background:{% if assertions_no_source > 0 %}rgba(244, 63, 94, 0.2){% else %}var(--bg-secondary){% endif %}; color:{% if assertions_no_source > 0 %}var(--accent-rose){% else %}#fff{% endif %};">{{ assertions_no_source }}</span>
+            </a>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Transactions Without Locators</span>
+                <span class="badge" style="background:rgba(251, 191, 36, 0.15); color:var(--accent-amber);">{{ transactions_no_locator }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Verified Records w/o Reviewers</span>
+                <span class="badge" style="background:var(--bg-secondary); color:#fff;">{{ verified_no_reviewer }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Duplicate Committee IDs</span>
+                <span class="badge" style="background:var(--bg-secondary); color:#fff;">{{ duplicate_committee_ids }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Missing Entity Jurisdictions</span>
+                <span class="badge" style="background:var(--bg-secondary); color:#fff;">{{ missing_jurisdictions }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem;">Stale Provisional Entities (>30d)</span>
+                <span class="badge" style="background:rgba(244, 63, 94, 0.2); color:var(--accent-rose);">{{ stale_provisional }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION 3: RECENT AUDITS -->
+<div class="card" style="padding:1.5rem;">
+    <h3 style="font-family:'Outfit', sans-serif; margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Evidentiary Ingestion & Modification Log (Audit Trail)</h3>
+    <table style="width:100%;">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Record Identifier</th>
+                <th>Reason / Review Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for audit in recent_audits %}
+            <tr>
+                <td style="font-family:monospace; font-size:0.85rem;">{{ audit.timestamp|date:'Y-m-d H:i:s' }}</td>
+                <td>
+                    <span class="badge" style="background:{% if audit.action == 'MERGE' %}var(--accent-amber){% elif audit.action == 'MATCH_CONFIRMED' %}var(--accent-emerald){% else %}#475569{% endif %}; color:#fff; font-size:0.75rem;">
+                        {{ audit.action }}
+                    </span>
+                </td>
+                <td style="font-family:monospace; font-size:0.85rem;">{{ audit.table_name }}:{{ audit.record_id }}</td>
+                <td style="font-size:0.85rem; color:#f1f5f9;">{{ audit.reason }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No audit events found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

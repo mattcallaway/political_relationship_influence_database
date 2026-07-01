@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Government Bodies & Decisions{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:2rem;">
+    <h2>Government Bodies & Public Records Directory</h2>
+    <p style="color:var(--text-muted);">Index of local commissions, boards, meetings, votes, and administrative appointments in Sonoma County.</p>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+    <!-- Government Bodies -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Commissions & Boards</h3>
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Jurisdiction</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for body in bodies %}
+                <tr>
+                    <td><a href="/entity/{{ body.entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ body.entity.canonical_name }}</a></td>
+                    <td>{{ body.jurisdiction }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No government bodies cataloged.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Public Offices -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Elected & Appointed Offices</h3>
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Office Name</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for office in offices %}
+                <tr>
+                    <td><a href="/entity/{{ office.entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ office.office_name }}</a></td>
+                    <td>{{ office.elected_or_appointed }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No public offices cataloged.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Meetings and Decisions -->
+<div class="card">
+    <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">Observed Government Meetings & Decisions</h3>
+    <table style="width:100%;">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Government Body</th>
+                <th>Location</th>
+                <th>Agenda Item Links</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for meeting in meetings %}
+            <tr>
+                <td style="font-family:monospace;">{{ meeting.date|date:'Y-m-d' }}</td>
+                <td><strong>{{ meeting.government_body.body_name }}</strong></td>
+                <td>{{ meeting.location }}</td>
+                <td>
+                    {% for item in meeting.agenda_items.all %}
+                    <span style="background:rgba(255,255,255,0.05); padding:0.1rem 0.4rem; border-radius:4px; font-size:0.85rem; margin-right:0.25rem;">
+                        Item {{ item.item_number }}: {{ item.title[:30] }}...
+                    </span>
+                    {% empty %}
+                    <span style="color:var(--text-muted);">No items parsed</span>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="color:var(--text-muted); text-align:center; padding:2rem 0;">No observed meetings imported.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

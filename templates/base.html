@@ -3,28 +3,213 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Sonoma Political Relationship and Influence Database{% endblock %}</title>
+    <title>{% block title %}Sonoma County Political Relationship Database{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base page layout overrides */
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .layout-container {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Design */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #0b0f19 0%, #111827 100%);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: block;
+            text-decoration: none;
+        }
+
+        .sidebar-brand h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-brand span {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            display: block;
+            margin-top: 0.25rem;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 1.5rem 1rem;
+        }
+
+        .nav-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            margin: 1.5rem 0.5rem 0.5rem;
+        }
+
+        .nav-section-title:first-child {
+            margin-top: 0;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            padding: 0.6rem 0.75rem;
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            margin-bottom: 0.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-nav a:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
+        }
+
+        .sidebar-nav a.active {
+            color: #fff;
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.15) 0%, rgba(56, 189, 248, 0.05) 100%);
+            border-left: 3px solid var(--accent-blue);
+            font-weight: 600;
+        }
+
+        /* Main Workspace Content Area */
+        .workspace {
+            margin-left: 280px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .workspace-header {
+            background: #111827;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .breadcrumbs {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .breadcrumbs a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .workspace-main {
+            flex: 1;
+            padding: 2rem;
+        }
+
+        .workspace-footer {
+            border-top: 1px solid var(--border-color);
+            padding: 1.5rem 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: #0b0f19;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <a href="/" class="brand">Sonoma Civic Research Platform</a>
-        <nav>
-            <a href="/" class="{% if request.path == '/' %}active{% endif %}">Entities</a>
-            <a href="/documents/" class="{% if '/documents/' in request.path %}active{% endif %}">Document Queue</a>
-            <a href="/assertions/" class="{% if '/assertions/' in request.path %}active{% endif %}">Assertions</a>
-            <a href="/transactions/" class="{% if '/transactions/' in request.path %}active{% endif %}">Transactions</a>
-            <a href="/research/" class="{% if '/research/' in request.path %}active{% endif %}">Research Dashboard</a>
-            <a href="/exports/" class="{% if '/exports/' in request.path %}active{% endif %}">Exports</a>
-        </nav>
-    </header>
-    <main>
-        {% block content %}{% endblock %}
-    </main>
-    <footer>
-        <p>Sonoma Political Relationship and Influence Database &bull; Open, Auditable Civic Research Platform</p>
-        <p><small>Evidence-centered research: Documented association does not inherently demonstrate wrongdoing or impropriety.</small></p>
-    </footer>
+    <div class="layout-container">
+        <!-- Sidebar Global Navigation -->
+        <aside class="sidebar">
+            <a href="/research/" class="sidebar-brand">
+                <h1>Sonoma Civic</h1>
+                <span>Political Relationship DB</span>
+            </a>
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Core Workspace</div>
+                <a href="/research/" class="{% if request.path == '/research/' %}active{% endif %}">Dashboard</a>
+                <a href="/search/" class="{% if '/search/' in request.path %}active{% endif %}">Search</a>
+                <a href="/" class="{% if request.path == '/' %}active{% endif %}">Entities</a>
+                <a href="/transactions/" class="{% if request.path == '/transactions/' %}active{% endif %}">Campaign Finance</a>
+                <a href="/government/" class="{% if '/government/' in request.path %}active{% endif %}">Government</a>
+                <a href="/projects/" class="{% if '/projects/' in request.path %}active{% endif %}">Projects</a>
+                <a href="/transactions/lobbying/" class="{% if '/lobbying/' in request.path %}active{% endif %}">Lobbying</a>
+                <a href="/transactions/contracts/" class="{% if '/contracts/' in request.path %}active{% endif %}">Contracts</a>
+
+                <div class="nav-section-title">Evidentiary Foundations</div>
+                <a href="/sources/" class="{% if '/sources/' in request.path %}active{% endif %}">Sources</a>
+                <a href="/documents/" class="{% if '/documents/' in request.path %}active{% endif %}">Documents</a>
+                <a href="/assertions/" class="{% if '/assertions/' in request.path %}active{% endif %}">Assertions</a>
+
+                <div class="nav-section-title">Investigator Workbench</div>
+                <a href="/research/collections/" class="{% if '/collections/' in request.path or '/tasks/' in request.path %}active{% endif %}">Research</a>
+                <a href="/extraction/queue/" class="{% if '/extraction/queue/' in request.path or '/review/' in request.path %}active{% endif %}">Review Queue</a>
+                <a href="/research/data-quality/" class="{% if '/data-quality/' in request.path %}active{% endif %}">Data Quality</a>
+                <a href="/research/imports/" class="{% if '/imports/' in request.path %}active{% endif %}">Imports</a>
+                <a href="/exports/" class="{% if '/exports/' in request.path %}active{% endif %}">Exports</a>
+                <a href="/admin/" target="_blank">Administration &rarr;</a>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <div class="workspace">
+            <header class="workspace-header">
+                <div class="breadcrumbs">
+                    <a href="/research/">Workspace</a> &rsaquo;
+                    {% block breadcrumbs %}Dashboard{% endblock %}
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-muted); display:flex; gap:1.5rem; align-items:center;">
+                    <span>Sonoma County, CA</span>
+                    <a href="/documents/" class="btn" style="padding:0.4rem 0.8rem; font-size:0.8rem;">Upload Document</a>
+                </div>
+            </header>
+
+            <main class="workspace-main">
+                {% block content %}{% endblock %}
+            </main>
+
+            <footer class="workspace-footer">
+                <p>Sonoma Political Relationship and Influence Database &bull; Open, Auditable Civic Research Platform</p>
+                <p style="margin-top:0.25rem;"><small>Evidence-centered research: Documented association does not inherently demonstrate wrongdoing or impropriety.</small></p>
+            </footer>
+        </div>
+    </div>
 </body>
 </html>

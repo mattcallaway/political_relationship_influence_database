@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Side-by-Side Document & Field Verification{% endblock %}
+{% block title %}Side-by-Side Review Queue - Sonoma Research Platform{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:1rem; display:flex; justify-space-between; align-items:center;">
+<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">
     <div>
         <h2>Side-by-Side Verification Review</h2>
         <p style="color:var(--text-muted);">Document: <strong>{{ document.original_filename }}</strong> &bull; SHA-256: <code>{{ document.sha256_hash|slice:":12" }}</code></p>
@@ -12,47 +12,175 @@
 </div>
 
 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; height:calc(100vh - 220px);">
-    <!-- Left Pane: Original Document Page Viewer -->
-    <div class="card" style="display:flex; flex-direction:column; justify-content:center; align-items:center; background:#000;">
-        <div style="color:var(--text-muted); text-align:center; padding:2rem;">
-            <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-bottom:1rem; color:var(--accent-blue);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            <h3>PDF Page Viewer / OCR Layer</h3>
-            <p style="font-size:0.85rem; margin-top:0.5rem;">Original document rendering preserved. Page 1 of {{ document.page_count|default:1 }}</p>
+    <!-- Left Pane: Bounding Box Coordinate Mapping Logs -->
+    <div class="card" style="display:flex; flex-direction:column; background:rgba(15, 23, 42, 0.95); border:1px solid var(--border-color); overflow-y:auto; padding:1.5rem;">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:var(--accent-blue);">Visual Coordinate Mapping & OCR Layers</h3>
+        {% for con in contributions %}
+        <div style="padding:1rem; background:rgba(0,0,0,0.3); border-radius:6px; margin-bottom:1.5rem; border-left:4px solid var(--accent-blue);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <strong>Transaction {{ con.public_id }}</strong>
+                <span class="badge badge-proposed" style="font-size:0.75rem;">Page {{ con.document_page.page_number }}</span>
+            </div>
+            
+            <div style="font-family:monospace; font-size:0.8rem; line-height:1.4; color:#a7f3d0; margin-bottom:0.5rem;">
+                <strong>Raw Block Text:</strong><br>
+                {{ con.extracted_block.raw_text }}
+            </div>
+            
+            <div style="font-size:0.75rem; color:var(--text-muted);">
+                <strong>Coordinate Bounding Box:</strong> {{ con.extracted_block.bounding_box_json|default:"[N/A]" }}<br>
+                <strong>Extraction Engine:</strong> {{ con.extracted_block.extraction_method }} (v{{ con.extracted_block.parser_version }})
+            </div>
         </div>
+        {% empty %}
+        <div style="color:var(--text-muted); text-align:center; padding-top:4rem;">
+            No raw visual bounding blocks cataloged.
+        </div>
+        {% endfor %}
     </div>
 
-    <!-- Right Pane: Machine Extracted Fields for Human Approval -->
-    <div class="card" style="overflow-y:auto;">
-        <h3>Extracted Fields & Proposed Entities</h3>
-        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Review each value before promoting to authoritative database records.</p>
+    <!-- Right Pane: Authoritative Central DB Verification Review Queue -->
+    <div class="card" style="overflow-y:auto; padding:1.5rem; background:rgba(30, 41, 59, 0.9);">
+        <h3 style="margin-bottom:0.5rem; color:#fff;">Central Database Verification Queue</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">Authoritative contributions shown in real-time. Action directly updates canonical records.</p>
         
-        <form hx-post="#" hx-swap="none">
-            {% for field in fields %}
-            <div style="padding:1rem; background:var(--bg-secondary); border-radius:8px; margin-bottom:1rem; border:1px solid var(--border-color);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                    <strong>{{ field.field_type }}</strong>
-                    <span class="badge badge-proposed">Conf: {{ field.confidence_score }}%</span>
+        {% for con in contributions %}
+        <div style="padding:1.25rem; background:var(--bg-secondary); border-radius:10px; margin-bottom:1.5rem; border:1px solid var(--border-color); border-left:4px solid {% if con.review_status == 'VERIFIED' or con.review_status == 'APPROVED' %}var(--accent-emerald){% else %}var(--accent-amber){% endif %};">
+            
+            <!-- Metadata & Status -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <div>
+                    <span class="badge" style="background:#475569; color:#fff; font-size:0.8rem;">{{ con.public_id }}</span>
+                    <span class="badge" style="font-size:0.8rem; background:{% if con.review_status == 'VERIFIED' %}var(--accent-emerald){% else %}var(--accent-amber){% endif %}; color:#fff;">
+                        {{ con.review_status }}
+                    </span>
                 </div>
+                <div style="text-align:right;">
+                    <span style="font-size:0.85rem; color:var(--text-muted);">Amount:</span>
+                    <strong style="font-size:1.1rem; color:#fff; font-family:monospace;">${{ con.amount|stringformat:".2f" }}</strong>
+                </div>
+            </div>
+
+            <!-- Validation Warnings -->
+            {% if con.extracted_block.original_parsed_json.warnings %}
+            <div style="padding:0.6rem; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.3); border-radius:6px; color:#fca5a5; font-size:0.8rem; margin-bottom:1rem;">
+                <strong>Warnings:</strong> {{ con.extracted_block.original_parsed_json.warnings|join:", " }}
+            </div>
+            {% endif %}
+
+            <!-- Form: Correction & Save -->
+            <form action="/extraction/correct/{{ con.id }}/" method="post" style="margin-bottom:1rem;">
+                {% csrf_token %}
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Contributor Raw Name</label>
+                        <input type="text" name="contributor_name" value="{{ con.donor_raw_name }}" style="width:100%; padding:0.4rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Transaction Date</label>
+                        <input type="text" name="date" value="{{ con.transaction_date|date:'m/d/Y' }}" placeholder="MM/DD/YYYY" style="width:100%; padding:0.4rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem; font-family:monospace;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Occupation</label>
+                        <input type="text" name="occupation" value="{{ con.occupation }}" style="width:100%; padding:0.4rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Employer</label>
+                        <input type="text" name="employer" value="{{ con.employer }}" style="width:100%; padding:0.4rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem;">
+                    </div>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.8rem; color:var(--text-muted);">
+                        Address: <code>{{ con.city_state_zip }}</code>
+                    </span>
+                    <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.8rem;">Save Corrections</button>
+                </div>
+            </form>
+
+            <hr style="border:0; border-top:1px solid var(--border-color); margin:1rem 0;">
+
+            <!-- Linkage, Rematching & Merging -->
+            <div style="margin-bottom:1rem; font-size:0.85rem; background:rgba(0,0,0,0.2); padding:0.75rem; border-radius:6px;">
                 <div style="margin-bottom:0.5rem;">
-                    <small style="color:var(--text-muted);">Raw Value:</small>
-                    <div style="font-family:monospace; background:rgba(0,0,0,0.3); padding:0.4rem; border-radius:4px;">{{ field.raw_value }}</div>
+                    <strong style="color:var(--text-muted);">Linked Entity:</strong> 
+                    <strong style="color:#fff;">{{ con.donor_entity.canonical_name }}</strong> 
+                    <code style="font-size:0.8rem;">[{{ con.donor_entity.public_id }}]</code>
+                    <span class="badge" style="background:#475569; color:#fff; font-size:0.7rem;">{{ con.donor_entity.status }}</span>
                 </div>
-                <div style="margin-bottom:0.75rem;">
-                    <small style="color:var(--text-muted);">Normalized Proposed Value:</small>
-                    <input type="text" value="{{ field.normalized_proposed_value }}" style="width:100%; padding:0.4rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff;">
+                
+                {% if con.match_attempt %}
+                <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+                    <strong>Match Method:</strong> <code>{{ con.match_attempt.match_method }}</code> &bull; 
+                    <strong>Score:</strong> <code>{{ con.match_attempt.match_score }}%</code><br>
+                    <strong>Matcher Reason:</strong> {{ con.match_attempt.reason }}
                 </div>
-                <div style="display:flex; gap:0.5rem;">
-                    <button type="button" class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:var(--accent-emerald);">Approve & Promote</button>
-                    <button type="button" class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.8rem;">Correct</button>
-                    <button type="button" class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.8rem; color:var(--accent-rose);">Reject</button>
+                
+                <!-- Competing Match Candidates -->
+                {% if con.match_attempt.candidates.all %}
+                <div style="margin-top:0.4rem; font-size:0.75rem; color:var(--text-muted);">
+                    <strong>Competing Candidates:</strong>
+                    <ul style="margin:0.2rem 0 0 1rem; padding:0;">
+                        {% for cand in con.match_attempt.candidates.all %}
+                        <li>{{ cand.entity.canonical_name }} [{{ cand.entity.public_id }}] - score: {{ cand.score }}% ({{ cand.match_method }})</li>
+                        {% endfor %}
+                    </ul>
                 </div>
+                {% endif %}
+                {% endif %}
             </div>
-            {% empty %}
-            <div style="padding:2rem; text-align:center; color:var(--text-muted);">
-                <p>No extracted fields awaiting review for this document job.</p>
+
+            <!-- Review Actions UI -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                
+                <!-- Match Confirmation -->
+                <form action="/extraction/confirm/{{ con.id }}/" method="post" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn" style="background:var(--accent-emerald); font-size:0.8rem; padding:0.3rem 0.7rem;">Confirm Match</button>
+                </form>
+
+                <!-- Rematch Form dropdown -->
+                <form action="/extraction/rematch/{{ con.id }}/" method="post" style="display:flex; gap:0.3rem; align-items:center; margin:0;">
+                    {% csrf_token %}
+                    <select name="target_entity" required style="padding:0.3rem; border-radius:4px; font-size:0.8rem; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; max-width:150px;">
+                        <option value="">-- Rematch To --</option>
+                        {% for ent in entities %}
+                        <option value="{{ ent.id }}">{{ ent.canonical_name }} [{{ ent.public_id }}]</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem;">Rematch</button>
+                </form>
+
+                <!-- Merge Form dropdown (only for provisional entities) -->
+                {% if con.donor_entity.status == 'PROVISIONAL_AUTO_CREATED' %}
+                <form action="/extraction/merge/{{ con.donor_entity.id }}/" method="post" style="display:flex; gap:0.3rem; align-items:center; margin:0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="document_id" value="{{ document.id }}">
+                    <select name="target_entity" required style="padding:0.3rem; border-radius:4px; font-size:0.8rem; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; max-width:150px;">
+                        <option value="">-- Merge Into --</option>
+                        {% for ent in entities %}
+                        {% if ent.id != con.donor_entity.id %}
+                        <option value="{{ ent.id }}">{{ ent.canonical_name }} [{{ ent.public_id }}]</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem; color:var(--accent-blue);">Merge</button>
+                </form>
+                {% endif %}
+
+                <!-- Reject Transaction -->
+                <form action="/extraction/reject/{{ con.id }}/" method="post" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.7rem; color:var(--accent-rose);">Reject</button>
+                </form>
+
             </div>
-            {% endfor %}
-        </form>
+        </div>
+        {% empty %}
+        <div style="padding:2rem; text-align:center; color:var(--text-muted);">
+            <p>No authoritative transaction records found for this document queue.</p>
+        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

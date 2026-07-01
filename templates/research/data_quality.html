@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Quality Center - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Data-Quality & Integrity Center</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">View diagnostic alerts, orphan records, or missing source associations and execute corrections.</p>
+        </div>
+        
+        <!-- Bulk actions triggers -->
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <form method="post" action="/research/data-quality/">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="fix_jurisdictions">
+                <button type="submit" class="btn" style="font-size:0.8rem;">Fix Blank Jurisdictions</button>
+            </form>
+            <form method="post" action="/research/data-quality/">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="fix_assertions">
+                <button type="submit" class="btn btn-secondary" style="font-size:0.8rem;">Dismiss Missing Source Warnings</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Messages System feedback display -->
+{% if messages %}
+<div style="margin-bottom:1.5rem;">
+    {% for msg in messages %}
+    <div class="card" style="background:rgba(52, 211, 153, 0.15); border:1px solid var(--accent-emerald); color:#fff; padding:0.75rem; border-radius:6px; font-size:0.9rem;">
+        {{ msg }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+    <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Live Diagnostic Log Warnings</h3>
+    <table style="width:100%;">
+        <thead>
+            <tr>
+                <th>Issue Category</th>
+                <th>Diagnostic Description</th>
+                <th>Model Type</th>
+                <th>Target Reference ID</th>
+                <th>Integrity Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for issue in issues %}
+            <tr>
+                <td><strong style="color:{% if issue.is_resolved %}var(--text-muted){% else %}var(--accent-rose){% endif %};">{{ issue.issue_type }}</strong></td>
+                <td style="color:{% if issue.is_resolved %}var(--text-muted){% else %}#fff{% endif %};">{{ issue.description }}</td>
+                <td><code style="background:rgba(255,255,255,0.05); padding:0.1rem 0.3rem;">{{ issue.affected_object_type }}</code></td>
+                <td style="font-family:monospace; font-size:0.85rem; color:var(--text-muted);">{{ issue.affected_object_id }}</td>
+                <td>
+                    <span class="badge {% if issue.is_resolved %}badge-approved{% else %}badge-proposed{% endif %}" style="font-size:0.75rem;">
+                        {% if issue.is_resolved %}RESOLVED / FIXED{% else %}ACTIVE / UNRESOLVED{% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="color:var(--text-muted); text-align:center; padding:3rem 0;">No active diagnostics warnings logged. All database records conform to integrity schemas!</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

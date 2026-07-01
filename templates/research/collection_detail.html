@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ collection.name }} - Collection Workspace{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <a href="/research/collections/" class="btn btn-secondary" style="font-size:0.85rem;">&larr; Back to Collections</a>
+    <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-secondary" style="font-size:0.8rem;">Add Entities</button>
+        <button class="btn btn-secondary" style="font-size:0.8rem;">Pin Documents</button>
+        <button class="btn" style="font-size:0.8rem;">New Task</button>
+    </div>
+</div>
+
+<!-- Collection Header -->
+<div class="card" style="padding:2rem; margin-bottom:2rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(15, 23, 42, 0.9) 100%); border-left:4px solid var(--accent-emerald);">
+    <h2 style="font-family:'Outfit', sans-serif; font-size:2rem; font-weight:700; color:#fff; margin-bottom:0.5rem;">{{ collection.name }}</h2>
+    <p style="color:#cbd5e1; font-size:1rem; line-height:1.5;">{{ collection.description }}</p>
+</div>
+
+<!-- Relationship Highlight Grid -->
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; margin-bottom:2rem; align-items:flex-start;">
+    <!-- Collection Entities -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Tracked Entities ({{ entities|length }})</h3>
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Canonical Name</th>
+                    <th>Type</th>
+                    <th>Jurisdiction</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ent in entities %}
+                <tr>
+                    <td><a href="/entity/{{ ent.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ ent.canonical_name }}</a></td>
+                    <td><span class="badge" style="background:#1e293b; color:#fff;">{{ ent.entity_type }}</span></td>
+                    <td>{{ ent.jurisdiction }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No entities pinned to this collection.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Direct Connections -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Intra-Collection Connections</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Evidentiary assertions where both subject and object exist within this collection.</p>
+        <ul style="padding-left:1.25rem; font-size:0.9rem; display:flex; flex-direction:column; gap:0.5rem;">
+            {% for ast in assertions %}
+            <li>
+                <strong>{{ ast.subject_entity.canonical_name }}</strong>
+                <code style="color:var(--accent-emerald);">{{ ast.predicate }}</code>
+                <strong>{{ ast.object_entity.canonical_name }}</strong>
+            </li>
+            {% empty %}
+            <li style="color:var(--text-muted); list-style:none; padding-left:0;">No direct relationships between collection members documented yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- Tasks and Questions Grid -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem; align-items:flex-start;">
+    <!-- Tasks -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Collection Tasks</h3>
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Task Title</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr>
+                    <td><strong>{{ task.task_title }}</strong></td>
+                    <td><span class="badge badge-proposed">{{ task.priority }}</span></td>
+                    <td><span class="badge badge-verified">{{ task.status }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No tasks created for this collection portfolio.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Questions -->
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Open Questions</h3>
+        <table style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Question Detail</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in questions %}
+                <tr>
+                    <td>{{ q.question_text }}</td>
+                    <td><span class="badge badge-proposed">{{ q.status }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No open questions registered.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Public Records Campaign -->
+<div class="card">
+    <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; color:#fff; font-size:1.1rem;">Public Records Act (PRA) Campaign Requests</h3>
+    <table style="width:100%;">
+        <thead>
+            <tr>
+                <th>Tracking #</th>
+                <th>Target Agency</th>
+                <th>Request Summary</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pra in pra_requests %}
+            <tr>
+                <td style="font-family:monospace; font-weight:bold;">{{ pra.tracking_number|default:"-" }}</td>
+                <td><strong>{{ pra.target_agency }}</strong></td>
+                <td>{{ pra.request_summary }}</td>
+                <td><span class="badge badge-approved">{{ pra.status }}</span></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No records requests tracked inside this collection workspace.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

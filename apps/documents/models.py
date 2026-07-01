@@ -34,6 +34,21 @@ class Document(models.Model):
     
     processing_status = models.CharField(max_length=30, choices=DocumentProcessingStatus.choices, default=DocumentProcessingStatus.UPLOADED)
     original_preserved = models.BooleanField(default=True, editable=False)
+    
+    public_id = models.CharField(max_length=20, unique=True, db_index=True, null=True, blank=True)
+    document_type = models.CharField(max_length=50, blank=True)
+    processing_version = models.CharField(max_length=10, default='1.0')
+    publication_classification = models.CharField(max_length=50, default='PUBLIC')
+
+    def save(self, *args, **kwargs):
+        if not self.public_id:
+            count = Document.objects.count()
+            for attempt in range(1, 100):
+                candidate = f"DOC{count + attempt:06d}"
+                if not Document.objects.filter(public_id=candidate).exists():
+                    self.public_id = candidate
+                    break
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.original_filename} ({self.sha256_hash[:8]})"
@@ -45,6 +60,11 @@ class DocumentPage(models.Model):
     ocr_confidence = models.FloatField(null=True, blank=True, help_text="Average OCR confidence score 0-100")
     page_image = models.ImageField(upload_to='page_images/%Y/%m/', null=True, blank=True)
     processing_status = models.CharField(max_length=30, default='EXTRACTED')
+    
+    ocr_text = models.TextField(blank=True)
+    page_width = models.FloatField(null=True, blank=True)
+    page_height = models.FloatField(null=True, blank=True)
+    review_status = models.CharField(max_length=30, default='UNREVIEWED')
 
     class Meta:
         unique_together = ('document', 'page_number')

@@ -68,6 +68,11 @@ class LegacyIdentifier(models.Model):
     current_public_id = models.CharField(max_length=100, db_index=True)
     target_model = models.CharField(max_length=100)
     migration_notes = models.TextField(blank=True)
+    
+    entity = models.ForeignKey('entities.Entity', on_delete=models.SET_NULL, null=True, blank=True, related_name='legacy_identifiers')
+    originating_system = models.CharField(max_length=100, blank=True)
+    source_workbook = models.CharField(max_length=255, blank=True)
+    import_batch = models.ForeignKey(ImportBatch, on_delete=models.SET_NULL, null=True, blank=True, related_name='legacy_identifiers')
 
     def __str__(self):
-        return f"{self.legacy_id} -> {self.current_public_id} ({self.target_model})"
+        return f"{self.legacy_id} -> {self.current_public_id or self.entity.public_id} ({self.target_model})"

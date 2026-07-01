@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Development & Infrastructure Projects{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Development & Infrastructure Projects</h2>
+    <p style="color:var(--text-muted);">List of public, commercial, and residential projects registered for political relationship analysis.</p>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Project Name</th>
+                <th>Category</th>
+                <th>Jurisdiction</th>
+                <th>Location</th>
+                <th>Applicant</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for project in projects %}
+            <tr>
+                <td><a href="/entity/{{ project.entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue);">{{ project.entity.canonical_name }}</a></td>
+                <td>{{ project.project_category }}</td>
+                <td>{{ project.jurisdiction }}</td>
+                <td>{{ project.location|default:"Unspecified" }}</td>
+                <td>
+                    {% if project.applicant %}
+                    <a href="/entity/{{ project.applicant.public_id }}/">{{ project.applicant.canonical_name }}</a>
+                    {% else %}
+                    <span style="color:var(--text-muted);">None</span>
+                    {% endif %}
+                </td>
+                <td><span class="badge badge-approved">{{ project.status }}</span></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem 0;">No projects cataloged in the research database.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

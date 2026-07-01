@@ -12,8 +12,8 @@
     <h3 style="margin-bottom:1rem;">Upload New Document</h3>
     <form action="/documents/upload/" method="post" enctype="multipart/form-data" style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
         {% csrf_token %}
-        <input type="file" name="document_file" accept=".pdf,.png,.jpg,.jpeg" required style="padding:0.5rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; flex:1; min-width:250px;">
-        <button type="submit" class="btn">Upload & Extract Document</button>
+        <input type="file" name="document_file" accept=".pdf,.png,.jpg,.jpeg" multiple required style="padding:0.5rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; flex:1; min-width:250px;">
+        <button type="submit" class="btn">Upload & Extract Documents</button>
     </form>
 </div>
 
