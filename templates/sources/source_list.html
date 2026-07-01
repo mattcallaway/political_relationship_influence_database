@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Sources Registry - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Sources & Publications Registry</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">Authoritative filing documents, news articles, minutes, and public records underpinning all evidentiary database assertions.</p>
+        </div>
+        <button class="btn" style="font-size:0.85rem;">Register New Source</button>
+    </div>
+</div>
+
+<div class="card">
+    <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+        Total Registered Sources: <strong>{{ sources|length }}</strong>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Source ID</th>
+                <th>Title / Publication</th>
+                <th>Type</th>
+                <th>Author / Issuing Body</th>
+                <th>Publication Date</th>
+                <th>Reliability Rating</th>
+                <th>Privacy Clearance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for src in sources %}
+            <tr>
+                <td style="font-family:monospace; font-weight:bold; font-size:0.85rem; color:var(--text-muted);">{{ src.public_id }}</td>
+                <td>
+                    {% if src.original_url %}
+                    <a href="{{ src.original_url }}" target="_blank" style="font-weight:bold; color:var(--accent-blue); text-decoration:none;">{{ src.title }} &ExternalLink;</a>
+                    {% else %}
+                    <strong>{{ src.title }}</strong>
+                    {% endif %}
+                </td>
+                <td><span class="badge" style="background:#1e293b; color:#fff; font-size:0.7rem; border:1px solid var(--border-color);">{{ src.get_source_type_display }}</span></td>
+                <td>{{ src.author|default:src.issuing_body|default:"Unspecified" }}</td>
+                <td style="font-family:monospace;">{{ src.publication_date|date:'Y-m-d'|default:"-" }}</td>
+                <td>
+                    <span class="badge {% if src.reliability == 'OFFICIAL_PUBLIC_RECORD' or src.reliability == 'VERIFIED_PRIMARY' %}badge-approved{% else %}badge-proposed{% endif %}" style="font-size:0.7rem;">
+                        {{ src.get_reliability_display }}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge {% if src.privacy_classification == 'PUBLIC' %}badge-verified{% else %}badge-proposed{% endif %}" style="font-size:0.7rem;">
+                        {{ src.get_privacy_classification_display }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align:center; color:var(--text-muted); padding:3rem 0;">No sources registered in the database. Ingest files via the Document Queue.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
