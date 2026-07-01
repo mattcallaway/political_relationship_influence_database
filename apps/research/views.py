@@ -449,10 +449,11 @@ def collection_detail(request, collection_id):
 def network_explorer(request):
     from apps.entities.models import Entity
     from apps.assertions.models import Assertion
+    from apps.transactions.models import Contribution, Expenditure, Contract
+    from apps.government.models import Appointment
     import json
     
     entities = Entity.objects.exclude(status='MERGED')
-    assertions = Assertion.objects.filter(object_entity__isnull=False)
     
     # Compile Cytoscape nodes
     nodes = []
@@ -468,14 +469,69 @@ def network_explorer(request):
         
     # Compile Cytoscape edges
     edges = []
-    for ast in assertions:
+    
+    # 1. Assertions
+    for ast in Assertion.objects.filter(object_entity__isnull=False):
         edges.append({
             'data': {
                 'id': ast.public_id,
                 'source': ast.subject_entity.public_id,
                 'target': ast.object_entity.public_id,
                 'label': ast.predicate,
-                'claim_type': ast.claim_type
+                'type': 'Assertion',
+                'provenance': f"Assertion ID: {ast.public_id}"
+            }
+        })
+        
+    # 2. Contributions
+    for con in Contribution.objects.filter(donor_entity__isnull=False):
+        edges.append({
+            'data': {
+                'id': con.public_id,
+                'source': con.donor_entity.public_id,
+                'target': con.filer_committee.public_id,
+                'label': f"Contributed ${con.amount:,.2f}",
+                'type': 'Contribution',
+                'provenance': f"Contribution: {con.public_id} ({con.schedule})"
+            }
+        })
+        
+    # 3. Expenditures
+    for exp in Expenditure.objects.filter(payee_entity__isnull=False):
+        edges.append({
+            'data': {
+                'id': exp.public_id,
+                'source': exp.filer_committee.public_id,
+                'target': exp.payee_entity.public_id,
+                'label': f"Paid ${exp.amount:,.2f}",
+                'type': 'Expenditure',
+                'provenance': f"Expenditure: {exp.public_id} ({exp.transaction_code})"
+            }
+        })
+        
+    # 4. Contracts
+    for ctr in Contract.objects.all():
+        edges.append({
+            'data': {
+                'id': ctr.public_id,
+                'source': ctr.agency_entity.public_id,
+                'target': ctr.vendor_entity.public_id,
+                'label': f"Contract: ${ctr.amount:,.2f}" if ctr.amount else "Contract",
+                'type': 'Contract',
+                'provenance': f"Contract: {ctr.public_id} - {ctr.contract_title}"
+            }
+        })
+        
+    # 5. Appointments
+    for apt in Appointment.objects.all():
+        edges.append({
+            'data': {
+                'id': apt.public_id,
+                'source': apt.person_entity.public_id,
+                'target': apt.body_entity.public_id,
+                'label': apt.position_title or "Board Member",
+                'type': 'Appointment',
+                'provenance': f"Appointment: {apt.public_id}"
             }
         })
         
@@ -489,6 +545,7 @@ def compare_entities(request):
     from apps.entities.models import Entity
     from apps.assertions.models import Assertion
     from django.db.models import Q
+    import datetime
     
     entity_a_id = request.GET.get('entity_a')
     entity_b_id = request.GET.get('entity_b')
@@ -500,6 +557,7 @@ def compare_entities(request):
     
     direct_assertions = []
     shared_neighbors = []
+    timeline = []
     
     if entity_a and entity_b:
         # Find direct assertions
@@ -524,12 +582,61 @@ def compare_entities(request):
             
         shared_neighbors = list(neighbors_a.intersection(neighbors_b))
         
+        # Compile Overlapping Chronological Timeline
+        from apps.transactions.models import Contribution, Expenditure
+        from apps.government.models import Appointment
+        
+        # Contributions
+        contributions = Contribution.objects.filter(
+            Q(donor_entity__in=[entity_a, entity_b]) | Q(filer_committee__in=[entity_a, entity_b])
+        ).distinct()
+        for c in contributions:
+            actor = "Entity A" if (c.donor_entity == entity_a or c.filer_committee == entity_a) else "Entity B"
+            timeline.append({
+                'date': c.transaction_date,
+                'type': 'Contribution',
+                'actor': actor,
+                'label': f"{c.donor_raw_name} contributed ${c.amount:,.2f} to {c.filer_committee.canonical_name}",
+                'source_id': c.public_id
+            })
+            
+        # Expenditures
+        expenditures = Expenditure.objects.filter(
+            Q(payee_entity__in=[entity_a, entity_b]) | Q(filer_committee__in=[entity_a, entity_b])
+        ).distinct()
+        for e in expenditures:
+            actor = "Entity A" if (e.payee_entity == entity_a or e.filer_committee == entity_a) else "Entity B"
+            timeline.append({
+                'date': e.transaction_date,
+                'type': 'Expenditure',
+                'actor': actor,
+                'label': f"{e.filer_committee.canonical_name} paid ${e.amount:,.2f} to {e.payee_raw_name} ({e.transaction_code})",
+                'source_id': e.public_id
+            })
+            
+        # Appointments
+        appointments = Appointment.objects.filter(
+            person_entity__in=[entity_a, entity_b]
+        ).distinct()
+        for apt in appointments:
+            actor = "Entity A" if apt.person_entity == entity_a else "Entity B"
+            timeline.append({
+                'date': apt.start_date,
+                'type': 'Appointment',
+                'actor': actor,
+                'label': f"Appointed to {apt.body_entity.canonical_name} as {apt.position_title or 'Board Member'}",
+                'source_id': apt.public_id
+            })
+            
+        timeline.sort(key=lambda x: x['date'] or datetime.date.min, reverse=True)
+        
     return render(request, 'research/compare_entities.html', {
         'entities': entities,
         'entity_a': entity_a,
         'entity_b': entity_b,
         'direct_assertions': direct_assertions,
-        'shared_neighbors': shared_neighbors
+        'shared_neighbors': shared_neighbors,
+        'timeline': timeline[:100] # Limit to top 100 timeline events
     })
 
 def download_inventory(request):

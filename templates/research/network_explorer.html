@@ -38,10 +38,39 @@
                 <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#f43f5e;"></span><span>Government Bodies</span></div>
             </div>
 
-            <h4 style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem;">Assertion Edges</h4>
+            <h4 style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem;">Relationship Edges</h4>
             <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
-                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#475569;"></span><span>Standard Factual Assertion</span></div>
-                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#f43f5e; border-style:dashed;"></span><span>Sensitive Claims</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#475569;"></span><span>Assertions & Claims</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#34d399;"></span><span>Campaign Contributions</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#fbbf24;"></span><span>Campaign Expenditures</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#a78bfa;"></span><span>Public Contracts</span></div>
+                <div style="display:flex; align-items:center; gap:0.5rem;"><span style="display:inline-block; width:20px; height:2px; background:#f43f5e;"></span><span>Board Appointments</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; font-size:1.1rem; color:#fff;">Relationship Filters</h3>
+            <div style="display:flex; flex-direction:column; gap:0.6rem; font-size:0.85rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                    <input type="checkbox" id="filter-assertions" checked onchange="applyFilters()" style="cursor:pointer;"/>
+                    <span>Assertions & Claims</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                    <input type="checkbox" id="filter-contributions" checked onchange="applyFilters()" style="cursor:pointer;"/>
+                    <span>Campaign Contributions</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                    <input type="checkbox" id="filter-expenditures" checked onchange="applyFilters()" style="cursor:pointer;"/>
+                    <span>Campaign Expenditures</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                    <input type="checkbox" id="filter-contracts" checked onchange="applyFilters()" style="cursor:pointer;"/>
+                    <span>Public Contracts</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                    <input type="checkbox" id="filter-appointments" checked onchange="applyFilters()" style="cursor:pointer;"/>
+                    <span>Board Appointments</span>
+                </label>
             </div>
         </div>
 
@@ -96,18 +125,24 @@
                     'font-size': '8px',
                     'color': '#94a3b8',
                     'edge-text-rotation': 'autorotate',
-                    'line-color': '#475569',
-                    'target-arrow-color': '#475569',
+                    'line-color': function(ele) {
+                        var type = ele.data('type') || 'Assertion';
+                        if (type === 'Contribution') return '#34d399';
+                        if (type === 'Expenditure') return '#fbbf24';
+                        if (type === 'Contract') return '#a78bfa';
+                        if (type === 'Appointment') return '#f43f5e';
+                        return '#475569';
+                    },
+                    'target-arrow-color': function(ele) {
+                        var type = ele.data('type') || 'Assertion';
+                        if (type === 'Contribution') return '#34d399';
+                        if (type === 'Expenditure') return '#fbbf24';
+                        if (type === 'Contract') return '#a78bfa';
+                        if (type === 'Appointment') return '#f43f5e';
+                        return '#475569';
+                    },
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier'
-                }
-            },
-            {
-                selector: 'edge[claim_type="ALLEGATION"]',
-                style: {
-                    'line-style': 'dashed',
-                    'line-color': '#f43f5e',
-                    'target-arrow-color': '#f43f5e'
                 }
             }
         ],
@@ -128,7 +163,24 @@
         document.getElementById('node-name').innerText = node.data('label');
         document.getElementById('node-type').innerText = node.data('type');
         document.getElementById('node-status').innerText = node.data('status');
-        document.getElementById('node-link').href = '/entity/' + node.data('id') + '/';
+        
+        var link = document.getElementById('node-link');
+        link.style.display = 'block';
+        link.href = '/entity/' + node.data('id') + '/';
+    });
+
+    cy.on('tap', 'edge', function(evt){
+        var edge = evt.target;
+        document.getElementById('detail-placeholder').style.display = 'none';
+        var content = document.getElementById('detail-content');
+        content.style.display = 'block';
+        
+        document.getElementById('node-name').innerText = edge.data('label');
+        document.getElementById('node-type').innerText = 'Relationship: ' + (edge.data('type') || 'Assertion');
+        document.getElementById('node-status').innerText = edge.data('provenance') || 'N/A';
+        
+        var link = document.getElementById('node-link');
+        link.style.display = 'none';
     });
 
     cy.on('tap', function(evt){
@@ -137,5 +189,26 @@
             document.getElementById('detail-content').style.display = 'none';
         }
     });
+
+    // Relationship type filtering logic
+    function applyFilters() {
+        var visibleTypes = [];
+        if (document.getElementById('filter-assertions').checked) visibleTypes.push('Assertion');
+        if (document.getElementById('filter-contributions').checked) visibleTypes.push('Contribution');
+        if (document.getElementById('filter-expenditures').checked) visibleTypes.push('Expenditure');
+        if (document.getElementById('filter-contracts').checked) visibleTypes.push('Contract');
+        if (document.getElementById('filter-appointments').checked) visibleTypes.push('Appointment');
+        
+        cy.batch(function(){
+            cy.edges().forEach(function(edge){
+                var type = edge.data('type') || 'Assertion';
+                if (visibleTypes.indexOf(type) > -1) {
+                    edge.show();
+                } else {
+                    edge.hide();
+                }
+            });
+        });
+    }
 </script>
 {% endblock %}
