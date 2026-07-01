@@ -141,6 +141,7 @@ def entity_detail(request, public_id):
     possible_duplicates = EntityMatchCandidate.objects.filter(Q(entity_1=entity) | Q(entity_2=entity), status='PENDING')
     audit_history = AuditEvent.objects.filter(record_id=str(entity.id)).order_by('-timestamp')
     collections = entity.research_collections.all()
+    all_collections = ResearchCollection.objects.all().order_by('name')
     
     # Source counting
     linked_source_ids = set()
@@ -264,6 +265,7 @@ def entity_detail(request, public_id):
         'possible_duplicates': possible_duplicates,
         'audit_history': audit_history,
         'collections': collections,
+        'all_collections': all_collections,
         'source_count': source_count,
         'assertion_count': assertion_count,
         'transaction_count': transaction_count,

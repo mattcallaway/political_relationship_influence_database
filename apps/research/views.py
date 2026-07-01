@@ -618,3 +618,29 @@ def create_collection_question(request, collection_id):
         messages.error(request, "Question text is required")
         
     return redirect('collection_detail', collection_id=collection.id)
+
+@require_POST
+def add_item_to_collection(request):
+    collection_id = request.POST.get('collection_id')
+    item_type = request.POST.get('item_type')
+    item_id = request.POST.get('item_id')
+    
+    collection = get_object_or_404(ResearchCollection, id=collection_id)
+    
+    if item_type == 'entity':
+        entity = get_object_or_404(Entity, id=item_id)
+        collection.entities.add(entity)
+        messages.success(request, f"Added entity '{entity.canonical_name}' to collection '{collection.name}'")
+    elif item_type == 'source':
+        source = get_object_or_404(Source, id=item_id)
+        collection.sources.add(source)
+        messages.success(request, f"Added source '{source.title}' to collection '{collection.name}'")
+    elif item_type == 'assertion':
+        assertion = get_object_or_404(Assertion, id=item_id)
+        collection.assertions.add(assertion)
+        messages.success(request, f"Added assertion '{assertion.public_id}' to collection '{collection.name}'")
+        
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
+    return redirect('collection_detail', collection_id=collection.id)
