@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+
+{% block title %}Document Workspace - {{ document.original_filename }}{% endblock %}
+
+{% block content %}
+<!-- Navigation and Title -->
+<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <a href="/documents/" class="btn btn-secondary" style="font-size:0.85rem;">&larr; Document Ingestion Queue</a>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span style="font-size:0.8rem; color:var(--text-muted);">Status:</span>
+        <span class="badge badge-approved">{{ document.get_processing_status_display }}</span>
+    </div>
+</div>
+
+<div class="card" style="padding:1.5rem; margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(15, 23, 42, 0.9) 100%);">
+    <h2 style="font-family:'Outfit', sans-serif; font-size:1.5rem; font-weight:700; color:#fff; margin-bottom:0.25rem;">{{ document.original_filename }}</h2>
+    <span style="font-family:monospace; font-size:0.8rem; color:var(--text-muted);">SHA-256: {{ document.sha256_hash }}</span>
+</div>
+
+<!-- Split Screen Layout -->
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; min-height:calc(100vh - 280px); align-items:stretch;">
+    
+    <!-- LEFT PANEL: Original Document Viewer -->
+    <div class="card" style="display:flex; flex-direction:column; padding:1rem; min-height:500px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h3 style="color:#fff; font-size:1rem; margin:0;">PDF Viewer Panel</h3>
+            
+            <!-- Page Navigator Controls -->
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                {% if prev_page %}
+                <a href="?page={{ prev_page }}" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.8rem;">&larr; Prev</a>
+                {% else %}
+                <button class="btn btn-secondary" disabled style="padding:0.25rem 0.5rem; font-size:0.8rem; opacity:0.5;">&larr; Prev</button>
+                {% endif %}
+                
+                <span style="color:#fff; font-size:0.85rem; font-weight:bold;">Page {{ page_number }} of {{ document.page_count }}</span>
+                
+                {% if next_page %}
+                <a href="?page={{ next_page }}" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.8rem;">Next &rarr;</a>
+                {% else %}
+                <button class="btn btn-secondary" disabled style="padding:0.25rem 0.5rem; font-size:0.8rem; opacity:0.5;">Next &rarr;</button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Embedded PDF Frame -->
+        <div style="flex:1; border-radius:6px; overflow:hidden; border:1px solid var(--border-color); background:#1e293b;">
+            {% if document.file_path %}
+            <iframe src="{{ document.file_path.url }}#page={{ page_number }}" style="width:100%; height:100%; border:none; min-height:600px;"></iframe>
+            {% else %}
+            <div style="display:flex; justify-content:center; align-items:center; height:100%; min-height:600px; color:var(--text-muted); flex-direction:column;">
+                <p>No uploaded file binary found.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- RIGHT PANEL: Interactive Researcher Workspace -->
+    <div class="card" style="display:flex; flex-direction:column; padding:1.25rem;">
+        <!-- Tab Bar -->
+        <div style="display:flex; gap:0.5rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="showWorkTab(event, 'tab-ocr')" style="padding:0.3rem 0.6rem; font-size:0.75rem;">OCR Text Correction</button>
+            <button class="btn btn-secondary" onclick="showWorkTab(event, 'tab-derived')" style="padding:0.3rem 0.6rem; font-size:0.75rem;">Derived Records ({{ contributions|length|add:expenditures.count }})</button>
+            <button class="btn btn-secondary" onclick="showWorkTab(event, 'tab-locator')" style="padding:0.3rem 0.6rem; font-size:0.75rem;">Create SourceLocator</button>
+            <button class="btn btn-secondary" onclick="showWorkTab(event, 'tab-history')" style="padding:0.3rem 0.6rem; font-size:0.75rem;">History & Metadata</button>
+        </div>
+        
+        <!-- Tab 1: OCR Text Correction -->
+        <div id="tab-ocr" class="work-tab-content" style="display:block;">
+            <form method="post" action="{% url 'correct_ocr' document.id page_number %}">
+                {% csrf_token %}
+                <div style="display:flex; flex-direction:column; gap:1rem;">
+                    <!-- Editable OCR Text Layer -->
+                    <div>
+                        <label style="color:#fff; font-size:0.85rem; font-weight:bold; display:block; margin-bottom:0.5rem;">Editable OCR Text Layer</label>
+                        <textarea name="ocr_text" rows="12" style="width:100%; font-family:monospace; font-size:0.85rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.5rem; border-radius:6px; resize:vertical;">{% if current_page.ocr_text %}{{ current_page.ocr_text }}{% else %}{{ current_page.extracted_text }}{% endif %}</textarea>
+                    </div>
+                    
+                    <!-- Read-only Raw Extraction for side-by-side comparison -->
+                    <div style="opacity:0.8;">
+                        <label style="color:var(--text-muted); font-size:0.8rem; font-weight:bold; display:block; margin-bottom:0.25rem;">Raw Machine Extraction (Read Only)</label>
+                        <textarea readonly rows="6" style="width:100%; font-family:monospace; font-size:0.8rem; background:rgba(0,0,0,0.15); border:1px solid var(--border-color); color:var(--text-muted); padding:0.5rem; border-radius:6px; resize:none;">{{ current_page.extracted_text }}</textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn" style="align-self:flex-start;">Save OCR Correction</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Tab 2: Derived Records -->
+        <div id="tab-derived" class="work-tab-content" style="display:none;">
+            <h4 style="color:#fff; font-size:0.95rem; margin-bottom:0.75rem;">Derived Campaign Contributions ({{ contributions|length }})</h4>
+            <table style="width:100%; margin-bottom:1.5rem;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Donor</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in contributions %}
+                    <tr>
+                        <td style="font-family:monospace; font-weight:bold;">{{ c.public_id }}</td>
+                        <td>{{ c.donor_raw_name }}</td>
+                        <td style="font-family:monospace; font-weight:bold; color:var(--accent-emerald);">${{ c.amount|stringformat:".2f" }}</td>
+                        <td><span class="badge badge-proposed">{{ c.review_status }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No contributions linked directly to this document.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <h4 style="color:#fff; font-size:0.95rem; margin-bottom:0.75rem;">Derived Expenditures ({{ expenditures.count }})</h4>
+            <table style="width:100%; margin-bottom:1.5rem;">
+                <thead>
+                    <tr>
+                        <th>Payee</th>
+                        <th>Amount</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in expenditures %}
+                    <tr>
+                        <td><strong>{{ e.payee_raw_name }}</strong></td>
+                        <td style="font-family:monospace; font-weight:bold; color:var(--accent-rose);">${{ e.amount|stringformat:".2f" }}</td>
+                        <td>{{ e.description|truncatechars:40 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No expenditures linked to this document's pages.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h4 style="color:#fff; font-size:0.95rem; margin-bottom:0.75rem;">Linked Evidentiary Assertions ({{ assertions.count }})</h4>
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Subject</th>
+                        <th>Predicate</th>
+                        <th>Object</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in assertions %}
+                    <tr>
+                        <td style="font-family:monospace; font-weight:bold;">{{ a.public_id }}</td>
+                        <td>{{ a.subject_entity.canonical_name }}</td>
+                        <td><code style="color:var(--accent-emerald);">{{ a.predicate }}</code></td>
+                        <td>{{ a.object_entity.canonical_name|default:a.object_value }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No assertions verified from this document coordinates.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Tab 3: Create SourceLocator & Bind -->
+        <div id="tab-locator" class="work-tab-content" style="display:none;">
+            <form method="post" action="{% url 'create_locator' document.id page_number %}">
+                {% csrf_token %}
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                    <!-- Coordinatesvx0, vy0, vx1, vy1 -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+                        <div>
+                            <label style="color:var(--text-muted); font-size:0.75rem; display:block;">Page Range / Reference</label>
+                            <input type="text" name="page_range" value="{{ page_number }}" style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px;">
+                        </div>
+                        <div>
+                            <label style="color:var(--text-muted); font-size:0.75rem; display:block;">Section (e.g. Schedule A)</label>
+                            <input type="text" name="section" placeholder="e.g. Schedule A" style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px;">
+                        </div>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:0.3rem;">
+                        <div>
+                            <label style="color:var(--text-muted); font-size:0.65rem; display:block;">vx0 (Top Left X)</label>
+                            <input type="number" step="0.01" name="vx0" placeholder="0.0" style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px;">
+                        </div>
+                        <div>
+                            <label style="color:var(--text-muted); font-size:0.65rem; display:block;">vy0 (Top Left Y)</label>
+                            <input type="number" step="0.01" name="vy0" placeholder="0.0" style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px;">
+                        </div>
+                        <div>
+                            <label style="color:var(--text-muted); font-size:0.65rem; display:block;">vx1 (Bot Right X)</label>
+                            <input type="number" step="0.01" name="vx1" placeholder="1.0" style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px;">
+                        </div>
+                        <div>
+                            <label style="color:var(--text-muted); font-size:0.65rem; display:block;">vy1 (Bot Right Y)</label>
+                            <input type="number" step="0.01" name="vy1" placeholder="1.0" style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px;">
+                        </div>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+                        <div>
+                            <label style="color:var(--text-muted); font-size:0.75rem; display:block;">Table Ref / ID</label>
+                            <input type="text" name="table_identifier" placeholder="e.g. Row 12" style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px;">
+                        </div>
+                        <div>
+                            <label style="color:var(--text-muted); font-size:0.75rem; display:block;">Filing Schedule</label>
+                            <input type="text" name="filing_schedule" placeholder="e.g. Schedule A" style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px;">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label style="color:var(--text-muted); font-size:0.75rem; display:block;">Locator Description / Evidence Text</label>
+                        <textarea name="locator_description" rows="3" placeholder="Paste snippet text from page proving relation..." style="width:100%; font-size:0.8rem; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; padding:0.3rem; border-radius:4px; resize:vertical;"></textarea>
+                    </div>
+                    
+                    <!-- BINDING SELECTION -->
+                    <div style="border-top:1px solid var(--border-color); padding-top:0.75rem; margin-top:0.25rem;">
+                        <h5 style="color:#fff; font-size:0.85rem; margin:0 0 0.5rem 0;">Directly Bind Locator to Record</h5>
+                        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:0.5rem;">
+                            <select name="bind_target_type" id="bind-type-select" onchange="toggleBindSelect()" style="font-size:0.8rem; padding:0.3rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                                <option value="">No Binding</option>
+                                <option value="assertion">Assertion</option>
+                                <option value="contribution">Contribution</option>
+                                <option value="expenditure">Expenditure</option>
+                            </select>
+                            
+                            <!-- Dynamic Lists -->
+                            <div id="bind-target-container">
+                                <select name="bind_target_id" style="width:100%; font-size:0.8rem; padding:0.3rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff;">
+                                    <option value="">Select Target Record...</option>
+                                    <!-- Options will be filtered using basic JS -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn" style="align-self:flex-start; margin-top:0.5rem;">Create & Bind Locator</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Tab 4: History & Metadata -->
+        <div id="tab-history" class="work-tab-content" style="display:none;">
+            <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem;">
+                <div>
+                    <span style="color:var(--text-muted); display:block;">Original Filename</span>
+                    <strong style="color:#fff;">{{ document.original_filename }}</strong>
+                </div>
+                <div>
+                    <span style="color:var(--text-muted); display:block;">File Size</span>
+                    <strong style="color:#fff;">{{ document.byte_size }} bytes</strong>
+                </div>
+                <div>
+                    <span style="color:var(--text-muted); display:block;">Page Count</span>
+                    <strong style="color:#fff;">{{ document.page_count }}</strong>
+                </div>
+                <div>
+                    <span style="color:var(--text-muted); display:block;">Filing Date / Upload Date</span>
+                    <strong style="color:#fff;">{{ document.uploaded_at|date:"Y-m-d H:i" }}</strong>
+                </div>
+                <div>
+                    <span style="color:var(--text-muted); display:block;">Native Text Layer Extracted</span>
+                    <strong style="color:{% if document.has_native_text %}var(--accent-emerald){% else %}var(--accent-amber){% endif %};">
+                        {{ document.has_native_text|yesno:"Yes,No" }}
+                    </strong>
+                </div>
+                <div>
+                    <span style="color:var(--text-muted); display:block;">OCR Provider</span>
+                    <strong style="color:#fff;">{{ document.ocr_provider }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showWorkTab(evt, tabId) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("work-tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = evt.currentTarget.parentNode.getElementsByTagName("button");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("btn-primary");
+            tablinks[i].classList.add("btn-secondary");
+        }
+        document.getElementById(tabId).style.display = "block";
+        evt.currentTarget.classList.remove("btn-secondary");
+        evt.currentTarget.classList.add("btn-primary");
+    }
+
+    var assertions = [
+        {% for a in assertions_all %}
+        { id: "{{ a.id }}", text: "{{ a.public_id }} - {{ a.subject_entity.canonical_name }} [{{ a.predicate }}]" },
+        {% endfor %}
+    ];
+
+    var contributions = [
+        {% for c in contributions %}
+        { id: "{{ c.id }}", text: "{{ c.public_id }} - {{ c.donor_raw_name }} (${{ c.amount }})" },
+        {% endfor %}
+    ];
+
+    var expenditures = [
+        {% for e in expenditures %}
+        { id: "{{ e.id }}", text: "{{ e.public_id }} - {{ e.payee_raw_name }} (${{ e.amount }})" },
+        {% endfor %}
+    ];
+
+    function toggleBindSelect() {
+        var selectType = document.getElementById("bind-type-select").value;
+        var targetSelect = document.querySelector('[name="bind_target_id"]');
+        
+        targetSelect.innerHTML = "<option value=''>Select Target Record...</option>";
+        
+        var list = [];
+        if (selectType === 'assertion') list = assertions;
+        else if (selectType === 'contribution') list = contributions;
+        else if (selectType === 'expenditure') list = expenditures;
+        
+        list.forEach(function(item) {
+            var option = document.createElement("option");
+            option.value = item.id;
+            option.text = item.text;
+            targetSelect.appendChild(option);
+        });
+    }
+</script>
+{% endblock %}
