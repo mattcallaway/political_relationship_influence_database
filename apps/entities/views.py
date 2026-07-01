@@ -96,41 +96,75 @@ def entity_list(request):
     })
 
 def entity_detail(request, public_id):
+    from apps.research.models import OpenQuestion, EntityMatchCandidate, ResearchCollection
+    from apps.transactions.models import AuditEvent
+    from django.db.models import Q
+    
     entity = get_object_or_404(Entity, public_id=public_id)
     person = Person.objects.filter(entity=entity).first()
     org = Organization.objects.filter(entity=entity).first()
     
-    subject_assertions = entity.subject_assertions.all()
-    object_assertions = entity.object_assertions.all()
+    subject_assertions = entity.subject_assertions.select_related('subject_entity', 'object_entity').all()
+    object_assertions = entity.object_assertions.select_related('subject_entity', 'object_entity').all()
     
-    contributions_received = entity.contributions_received.all()
-    contributions_made = entity.contributions_made.all()
+    contributions_received = entity.contributions_received.select_related('donor_entity', 'filer_committee').all()
+    contributions_made = entity.contributions_made.select_related('donor_entity', 'filer_committee').all()
     
-    # Expanded relations lookup
-    expenditures_made = entity.expenditures_made.all() if hasattr(entity, 'expenditures_made') else []
-    expenditures_received = entity.expenditures_received.all() if hasattr(entity, 'expenditures_received') else []
+    expenditures_made = entity.expenditures_made.select_related('filer_committee', 'payee_entity').all() if hasattr(entity, 'expenditures_made') else []
+    expenditures_received = entity.expenditures_received.select_related('filer_committee', 'payee_entity').all() if hasattr(entity, 'expenditures_received') else []
     
-    appointments = entity.appointments.all() if hasattr(entity, 'appointments') else []
-    made_appointments = entity.made_appointments.all() if hasattr(entity, 'made_appointments') else []
+    appointments = entity.appointments.select_related('person_entity', 'body_entity').all() if hasattr(entity, 'appointments') else []
+    made_appointments = entity.made_appointments.select_related('person_entity', 'body_entity').all() if hasattr(entity, 'made_appointments') else []
     
-    vendor_contracts = entity.vendor_contracts.all() if hasattr(entity, 'vendor_contracts') else []
-    agency_contracts = entity.agency_contracts.all() if hasattr(entity, 'agency_contracts') else []
+    vendor_contracts = entity.vendor_contracts.select_related('agency_entity', 'vendor_entity').all() if hasattr(entity, 'vendor_contracts') else []
+    agency_contracts = entity.agency_contracts.select_related('agency_entity', 'vendor_entity').all() if hasattr(entity, 'agency_contracts') else []
     
-    lobbying_as_firm = entity.lobbying_as_firm.all() if hasattr(entity, 'lobbying_as_firm') else []
-    lobbying_as_client = entity.lobbying_as_client.all() if hasattr(entity, 'lobbying_as_client') else []
+    lobbying_as_firm = entity.lobbying_as_firm.select_related('lobbyist_entity', 'client_entity', 'agency_entity').all() if hasattr(entity, 'lobbying_as_firm') else []
+    lobbying_as_client = entity.lobbying_as_client.select_related('lobbyist_entity', 'client_entity', 'agency_entity').all() if hasattr(entity, 'lobbying_as_client') else []
     
-    votes_cast = entity.votes_cast.all() if hasattr(entity, 'votes_cast') else []
+    votes_cast = entity.votes_cast.select_related('voter_person', 'governing_body').all() if hasattr(entity, 'votes_cast') else []
     
-    # Subtype queries
     campaigns = []
     if entity.entity_type == 'CAMPAIGN' and hasattr(entity, 'campaign_profile'):
         campaigns = [entity.campaign_profile]
-    
+    else:
+        campaigns = list(entity.campaigns_as_candidate.all())
+        
     projects = []
     if hasattr(entity, 'project_profile'):
         projects = [entity.project_profile]
         
     aliases = entity.aliases.all()
+    
+    # Extensions for Milestone 1 summary
+    open_questions = OpenQuestion.objects.filter(related_entity=entity)
+    possible_duplicates = EntityMatchCandidate.objects.filter(Q(entity_1=entity) | Q(entity_2=entity), status='PENDING')
+    audit_history = AuditEvent.objects.filter(record_id=str(entity.id)).order_by('-timestamp')
+    collections = entity.research_collections.all()
+    
+    # Source counting
+    linked_source_ids = set()
+    for c in contributions_made:
+        if c.source_id: linked_source_ids.add(c.source_id)
+    for c in contributions_received:
+        if c.source_id: linked_source_ids.add(c.source_id)
+    for e in expenditures_made:
+        if e.source_id: linked_source_ids.add(e.source_id)
+    for e in expenditures_received:
+        if e.source_id: linked_source_ids.add(e.source_id)
+    for ast in subject_assertions:
+        for asrc in ast.assertion_sources.all():
+            if asrc.source_id: linked_source_ids.add(asrc.source_id)
+    source_count = len(linked_source_ids)
+    
+    assertion_count = subject_assertions.count() + object_assertions.count()
+    transaction_count = contributions_made.count() + contributions_received.count() + len(expenditures_made) + len(expenditures_received)
+    
+    # Calculate financial totals
+    from django.db.models import Sum
+    total_made = entity.contributions_made.aggregate(val=Sum('amount'))['val'] or 0
+    total_received = entity.contributions_received.aggregate(val=Sum('amount'))['val'] or 0
+    total_financial_volume = float(total_made + total_received)
     
     # Build timeline feed
     timeline = []
@@ -158,7 +192,7 @@ def entity_detail(request, public_id):
             timeline.append({
                 'date': e.transaction_date,
                 'type': 'Expenditure Made',
-                'description': f"Spent ${e.amount} paid to {e.payee_raw_name} ({e.description or e.purpose_code})",
+                'description': f"Spent ${e.amount} paid to {e.payee_raw_name} ({e.description})",
                 'amount': e.amount
             })
 
@@ -202,6 +236,7 @@ def entity_detail(request, public_id):
             })
 
     # Sort timeline descending
+    import datetime
     timeline.sort(key=lambda x: x['date'] or datetime.date.today(), reverse=True)
     
     return render(request, 'entities/entity_detail.html', {
@@ -224,7 +259,15 @@ def entity_detail(request, public_id):
         'votes_cast': votes_cast,
         'campaigns': campaigns,
         'projects': projects,
-        'timeline': timeline
+        'timeline': timeline,
+        'open_questions': open_questions,
+        'possible_duplicates': possible_duplicates,
+        'audit_history': audit_history,
+        'collections': collections,
+        'source_count': source_count,
+        'assertion_count': assertion_count,
+        'transaction_count': transaction_count,
+        'total_financial_volume': total_financial_volume
     })
 
 def unified_search(request):

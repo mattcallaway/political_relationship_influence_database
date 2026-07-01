@@ -18,6 +18,33 @@
     <p style="color:#cbd5e1; font-size:1rem; line-height:1.5;">{{ collection.description }}</p>
 </div>
 
+<!-- Collection Dashboard Metrics -->
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
+    <div class="card">
+        <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Tracked Entities</span>
+        <strong style="font-size:2rem; color:#fff; display:block;">{{ entities|length }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">{{ verified_count }} verified &bull; {{ provisional_count }} provisional</span>
+    </div>
+    
+    <div class="card">
+        <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Financial Volume</span>
+        <strong style="font-size:2rem; color:#fff; display:block; font-family:monospace;">${{ total_contributions_volume|add:total_expenditures_volume|stringformat:".2f" }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">${{ total_contributions_volume|stringformat:".2f" }} in &bull; ${{ total_expenditures_volume|stringformat:".2f" }} out</span>
+    </div>
+
+    <div class="card">
+        <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Relations & Actions</span>
+        <strong style="font-size:2rem; color:#fff; display:block;">{{ assertions.count }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">{{ lobbying_activities.count }} lobbying &bull; {{ contracts.count }} contracts</span>
+    </div>
+
+    <div class="card">
+        <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem;">Integrity Issues</span>
+        <strong style="font-size:2rem; color:{% if dq_issues.count > 0 %}var(--accent-rose){% else %}#fff{% endif %}; display:block;">{{ dq_issues.count }}</strong>
+        <span style="font-size:0.75rem; color:var(--text-muted);">Active unresolved warnings</span>
+    </div>
+</div>
+
 <!-- Relationship Highlight Grid -->
 <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; margin-bottom:2rem; align-items:flex-start;">
     <!-- Collection Entities -->

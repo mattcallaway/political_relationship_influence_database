@@ -51,12 +51,12 @@
     </div>
 </div>
 
-<!-- Header Card -->
+<!-- Header Card with Metadata Overview Summary Panel -->
 <div class="card" style="padding:2rem; margin-bottom:2rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(15, 23, 42, 0.9) 100%); border-left: 4px solid var(--accent-blue);">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1.5rem;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1.5rem; margin-bottom:1.5rem;">
         <div>
             <h2 style="font-family:'Outfit', sans-serif; font-size:2.2rem; font-weight:700; color:#fff; margin-bottom:0.5rem;">{{ entity.canonical_name }}</h2>
-            <p style="color:var(--text-muted); font-size:0.95rem; display:flex; gap:1.5rem; flex-wrap:wrap;">
+            <p style="color:var(--text-muted); font-size:0.95rem; display:flex; gap:1.5rem; flex-wrap:wrap; margin:0;">
                 <span>Public ID: <strong style="color:#fff;">{{ entity.public_id }}</strong></span>
                 <span>Type: <strong style="color:var(--accent-blue);">{{ entity.get_entity_type_display }}</strong></span>
                 <span>Jurisdiction: <strong style="color:#fff;">{{ entity.jurisdiction|default:"Sonoma County" }}</strong></span>
@@ -72,8 +72,40 @@
         </div>
     </div>
     
+    <!-- Summary Panel Statistics Grid -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; border-top:1px solid var(--border-color); padding-top:1.25rem; font-size:0.85rem;">
+        <div>
+            <span style="color:var(--text-muted); display:block; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em; margin-bottom:0.25rem;">Source Count</span>
+            <strong style="font-size:1.1rem; color:#fff;">{{ source_count }}</strong>
+        </div>
+        <div>
+            <span style="color:var(--text-muted); display:block; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em; margin-bottom:0.25rem;">Assertions</span>
+            <strong style="font-size:1.1rem; color:#fff;">{{ assertion_count }}</strong>
+        </div>
+        <div>
+            <span style="color:var(--text-muted); display:block; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em; margin-bottom:0.25rem;">Transactions</span>
+            <strong style="font-size:1.1rem; color:#fff;">{{ transaction_count }}</strong>
+        </div>
+        <div>
+            <span style="color:var(--text-muted); display:block; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em; margin-bottom:0.25rem;">Open Questions</span>
+            <strong style="font-size:1.1rem; color:{% if open_questions.count > 0 %}var(--accent-amber){% else %}#fff{% endif %};">{{ open_questions.count }}</strong>
+        </div>
+        <div>
+            <span style="color:var(--text-muted); display:block; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em; margin-bottom:0.25rem;">Duplicates</span>
+            <strong style="font-size:1.1rem; color:{% if possible_duplicates.count > 0 %}var(--accent-rose){% else %}#fff{% endif %};">{{ possible_duplicates.count }}</strong>
+        </div>
+        <div>
+            <span style="color:var(--text-muted); display:block; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em; margin-bottom:0.25rem;">Last Reviewed</span>
+            <strong style="font-size:1.1rem; color:#fff;">{{ entity.updated_at|date:'Y-m-d' }}</strong>
+        </div>
+        <div>
+            <span style="color:var(--text-muted); display:block; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em; margin-bottom:0.25rem;">Last Updated</span>
+            <strong style="font-size:1.1rem; color:#fff;">{{ entity.updated_at|date:'Y-m-d H:i' }}</strong>
+        </div>
+    </div>
+    
     {% if aliases %}
-    <div style="margin-top:1rem; font-size:0.85rem; color:var(--text-muted);">
+    <div style="margin-top:1.25rem; font-size:0.85rem; color:var(--text-muted); border-top:1px solid var(--border-color); padding-top:0.75rem;">
         Alternate Aliases: {% for alias in aliases %}<code style="background:rgba(255,255,255,0.05); padding:0.15rem 0.35rem; border-radius:4px; margin-right:0.25rem; color:#fff;">{{ alias.alias_text }}</code>{% endfor %}
     </div>
     {% endif %}
@@ -123,16 +155,52 @@
                 {% endif %}
             </div>
 
-            <div class="card">
-                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">System Warnings</h3>
-                <ul style="list-style:none; padding:0; font-size:0.85rem; display:flex; flex-direction:column; gap:0.5rem;">
-                    {% if entity.status == 'PROVISIONAL_AUTO_CREATED' %}
-                    <li style="color:var(--accent-amber);">⚠️ Entity is auto-created and provisional. Needs review.</li>
-                    {% endif %}
-                    {% if not subject_assertions %}
-                    <li style="color:var(--text-muted);">ℹ️ No directed relationships assertions cataloged.</li>
-                    {% endif %}
-                </ul>
+            <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                <div class="card">
+                    <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">System Warnings</h3>
+                    <ul style="list-style:none; padding:0; font-size:0.85rem; display:flex; flex-direction:column; gap:0.5rem;">
+                        {% if entity.status == 'PROVISIONAL_AUTO_CREATED' %}
+                        <li style="color:var(--accent-amber);">⚠️ Entity is auto-created and provisional. Needs review.</li>
+                        {% endif %}
+                        {% if not subject_assertions %}
+                        <li style="color:var(--text-muted);">ℹ️ No directed relationships assertions cataloged.</li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Connection Summaries</h3>
+                    <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem;">
+                        <div>
+                            <strong style="color:var(--accent-emerald); display:block;">Financial Connections</strong>
+                            <span style="color:var(--text-muted);">{{ contributions_made.count|add:contributions_received.count }} campaign finance transactions, total volume: ${{ total_financial_volume|stringformat:".2f" }}</span>
+                        </div>
+                        <div>
+                            <strong style="color:var(--accent-blue); display:block;">Campaign Connections</strong>
+                            <span style="color:var(--text-muted);">{{ campaigns|length }} campaigns registered</span>
+                        </div>
+                        <div>
+                            <strong style="color:var(--accent-amber); display:block;">Professional & Lobbying</strong>
+                            <span style="color:var(--text-muted);">{{ lobbying_as_firm.count|add:lobbying_as_client.count }} lobbying activities</span>
+                        </div>
+                        <div>
+                            <strong style="color:#a78bfa; display:block;">Governmental Appointments</strong>
+                            <span style="color:var(--text-muted);">{{ appointments.count|add:made_appointments.count }} board appointments</span>
+                        </div>
+                        <div>
+                            <strong style="color:#fbbf24; display:block;">Projects</strong>
+                            <span style="color:var(--text-muted);">{{ projects|length }} planning developments</span>
+                        </div>
+                        <div>
+                            <strong style="color:#f43f5e; display:block;">Civic & Board</strong>
+                            <span style="color:var(--text-muted);">{{ votes_cast.count }} votes cast in public meetings</span>
+                        </div>
+                        <div>
+                            <strong style="color:#38bdf8; display:block;">Evidentiary Assertions</strong>
+                            <span style="color:var(--text-muted);">{{ assertion_count }} verified node relationships</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

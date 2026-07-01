@@ -148,12 +148,15 @@ def research_tasks(request):
 
 def data_quality(request):
     from apps.research.models import DataQualityIssue
-    from apps.entities.models import Entity
+    from apps.entities.models import Entity, EntityStatus
     from apps.assertions.models import Assertion
-    from apps.campaigns.models import Committee
+    from apps.campaigns.models import Committee, Campaign
+    from apps.transactions.models import Contribution, Expenditure, LobbyingActivity
+    from apps.government.models import Appointment, Vote
     from django.contrib import messages
     from django.db import transaction
     from django.shortcuts import redirect
+    import datetime
     
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -182,7 +185,7 @@ def data_quality(request):
         )
         
     # 2. Assertions without sources
-    from django.db.models import Count
+    from django.db.models import Q, Count
     no_src = Assertion.objects.annotate(src_count=Count('evidence_sources')).filter(src_count=0)
     for ast in no_src:
         DataQualityIssue.objects.get_or_create(
@@ -203,6 +206,77 @@ def data_quality(request):
             affected_object_id=f_id
         )
         
+    # 4. Transactions without sources
+    contrib_no_src = Contribution.objects.filter(source=None)
+    for c in contrib_no_src[:10]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Transaction without Source",
+            description=f"Contribution '{c.public_id}' is missing a parent source publication reference.",
+            affected_object_type="Contribution",
+            affected_object_id=str(c.id)
+        )
+        
+    # 5. Verified records without reviewer
+    verified_no_rev = Entity.objects.filter(status=EntityStatus.VERIFIED, updated_by=None)
+    for ent in verified_no_rev[:10]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Verified without Reviewer",
+            description=f"Entity '{ent.canonical_name}' is set to verified but lacks reviewer updated_by field.",
+            affected_object_type="Entity",
+            affected_object_id=str(ent.id)
+        )
+
+    # 6. Duplicate transactions
+    dupe_contribs = Contribution.objects.values('filer_committee', 'donor_raw_name', 'transaction_date', 'amount').annotate(cnt=Count('id')).filter(cnt__gt=1)
+    for dc in dupe_contribs[:5]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Duplicate Contributions",
+            description=f"Duplicate contributions detected from '{dc['donor_raw_name']}' on {dc['transaction_date']} for amount ${dc['amount']}.",
+            affected_object_type="Contribution",
+            affected_object_id=str(dc['filer_committee'])
+        )
+
+    # 7. Impossible dates
+    today = datetime.date.today()
+    bad_dates = Contribution.objects.filter(Q(transaction_date__gt=today) | Q(transaction_date__lt=datetime.date(1990, 1, 1)))
+    for c in bad_dates[:5]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Impossible Date",
+            description=f"Contribution '{c.public_id}' has impossible transaction date: {c.transaction_date}.",
+            affected_object_type="Contribution",
+            affected_object_id=str(c.id)
+        )
+
+    # 8. Invalid monetary values
+    bad_amounts = Contribution.objects.filter(amount__lte=0)
+    for c in bad_amounts[:5]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Invalid Amount",
+            description=f"Contribution '{c.public_id}' has zero or negative amount: ${c.amount}.",
+            affected_object_type="Contribution",
+            affected_object_id=str(c.id)
+        )
+
+    # 9. Lobbying without client
+    bad_lobbying = LobbyingActivity.objects.filter(Q(client_entity=None) | Q(lobbyist_entity=None))
+    for lb in bad_lobbying[:5]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Incomplete Lobbying Activity",
+            description=f"LobbyingActivity '{lb.public_id}' is missing lobbyist or client reference.",
+            affected_object_type="LobbyingActivity",
+            affected_object_id=str(lb.id)
+        )
+
+    # 10. Appointments without board
+    bad_appointments = Appointment.objects.filter(body_entity=None)
+    for ap in bad_appointments[:5]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Orphan Appointment",
+            description=f"Appointment '{ap.public_id}' lacks a parent board or governing body reference.",
+            affected_object_type="Appointment",
+            affected_object_id=str(ap.id)
+        )
+
     issues = DataQualityIssue.objects.all().order_by('is_resolved', 'issue_type')
     return render(request, 'research/data_quality.html', {
         'issues': issues
@@ -218,7 +292,6 @@ def imports_management(request):
 def collection_list(request):
     from apps.research.models import ResearchCollection
     
-    # Auto-seed sample collection if none exist
     col, created = ResearchCollection.objects.get_or_create(
         name="Muelrath Public Affairs",
         defaults={
@@ -227,7 +300,20 @@ def collection_list(request):
     )
     if created:
         from apps.entities.models import Entity
-        for ent in Entity.objects.all()[:6]:
+        import random
+        muelrath_person, _ = Entity.objects.get_or_create(
+            canonical_name="Robert Muelrath",
+            entity_type="PERSON",
+            defaults={'public_id': f"ENT{random.randint(100000, 999999)}", 'status': 'PROVISIONAL_AUTO_CREATED'}
+        )
+        muelrath_firm, _ = Entity.objects.get_or_create(
+            canonical_name="Muelrath Public Affairs",
+            entity_type="ORGANIZATION",
+            defaults={'public_id': f"ENT{random.randint(100000, 999999)}", 'status': 'PROVISIONAL_AUTO_CREATED'}
+        )
+        col.entities.add(muelrath_person)
+        col.entities.add(muelrath_firm)
+        for ent in Entity.objects.exclude(id__in=[muelrath_person.id, muelrath_firm.id])[:6]:
             col.entities.add(ent)
             
     collections = ResearchCollection.objects.all()
@@ -236,28 +322,87 @@ def collection_list(request):
     })
 
 def collection_detail(request, collection_id):
-    from apps.research.models import ResearchCollection
-    from django.shortcuts import get_object_or_404
-    collection = get_object_or_404(ResearchCollection, id=collection_id)
-    
-    # Relationships highlight (e.g. direct assertions linking entities inside the collection)
-    entities = collection.entities.all()
+    from apps.research.models import ResearchCollection, OpenQuestion, PRARequest, ResearchTask, DataQualityIssue
+    from apps.entities.models import Entity, Project as ProjectSubtype
+    from apps.transactions.models import Contribution, Expenditure, Contract, LobbyingActivity
+    from apps.government.models import Appointment, Vote, Meeting
     from apps.assertions.models import Assertion
-    from django.db.models import Q
+    from django.shortcuts import get_object_or_404
+    from django.db.models import Q, Sum
+    
+    collection = get_object_or_404(ResearchCollection, id=collection_id)
+    entities = collection.entities.all()
+    
+    # Compile metrics
     assertions = Assertion.objects.filter(
         subject_entity__in=entities,
         object_entity__in=entities
     ).distinct()
+    
+    # Financials
+    contributions = collection.contributions.all()
+    expenditures = Expenditure.objects.filter(Q(filer_committee__in=entities) | Q(payee_entity__in=entities)).distinct()
+    
+    total_contributions_volume = contributions.aggregate(val=Sum('amount'))['val'] or 0
+    total_expenditures_volume = expenditures.aggregate(val=Sum('amount'))['val'] or 0
+    
+    # Entity stats
+    entity_types_query = entities.values('entity_type').annotate(cnt=Count('id'))
+    entity_types = {item['entity_type']: item['cnt'] for item in entity_types_query}
+    
+    verified_count = entities.filter(status='VERIFIED').count()
+    provisional_count = entities.filter(status='PROVISIONAL_AUTO_CREATED').count()
+    
+    # Relations
+    contracts = Contract.objects.filter(Q(agency_entity__in=entities) | Q(vendor_entity__in=entities)).distinct()
+    lobbying_activities = LobbyingActivity.objects.filter(Q(lobbyist_entity__in=entities) | Q(client_entity__in=entities)).distinct()
+    votes = Vote.objects.filter(voter_person__in=entities).distinct()
+    projects = ProjectSubtype.objects.filter(entity__in=entities)
+    
+    # Data Quality
+    entity_ids = [str(e.id) for e in entities]
+    dq_issues = DataQualityIssue.objects.filter(affected_object_id__in=entity_ids, is_resolved=False)
+    
+    # Seed timeline from collection items
+    timeline = []
+    for c in contributions:
+        if c.transaction_date:
+            timeline.append({
+                'date': c.transaction_date,
+                'type': 'Contribution',
+                'description': f"${c.amount} from {c.donor_raw_name} to {c.filer_committee.canonical_name}"
+            })
+    for e in expenditures:
+        if e.transaction_date:
+            timeline.append({
+                'date': e.transaction_date,
+                'type': 'Expenditure',
+                'description': f"${e.amount} paid to {e.payee_raw_name} by {e.filer_committee.canonical_name}"
+            })
+    import datetime
+    timeline.sort(key=lambda x: x['date'] or datetime.date.today(), reverse=True)
     
     return render(request, 'research/collection_detail.html', {
         'collection': collection,
         'entities': entities,
         'assertions': assertions,
         'sources': collection.sources.all(),
-        'contributions': collection.contributions.all(),
+        'contributions': contributions,
+        'expenditures': expenditures,
         'tasks': collection.tasks.all(),
         'questions': collection.questions.all(),
-        'pra_requests': collection.pra_requests.all()
+        'pra_requests': collection.pra_requests.all(),
+        'total_contributions_volume': float(total_contributions_volume),
+        'total_expenditures_volume': float(total_expenditures_volume),
+        'entity_types': entity_types,
+        'verified_count': verified_count,
+        'provisional_count': provisional_count,
+        'contracts': contracts,
+        'lobbying_activities': lobbying_activities,
+        'votes': votes,
+        'projects': projects,
+        'dq_issues': dq_issues,
+        'timeline': timeline[:30]
     })
 
 def network_explorer(request):
@@ -345,3 +490,22 @@ def compare_entities(request):
         'direct_assertions': direct_assertions,
         'shared_neighbors': shared_neighbors
     })
+
+def download_inventory(request):
+    from django.http import HttpResponse
+    from django.core.management import call_command
+    import io
+    
+    fmt = request.GET.get('format', 'json')
+    output = io.StringIO()
+    
+    if fmt == 'markdown':
+        call_command('database_inventory_report', markdown=True, include_quality_checks=True, stdout=output)
+        response = HttpResponse(output.getvalue(), content_type='text/markdown')
+        response['Content-Disposition'] = 'attachment; filename="database_inventory.md"'
+    else:
+        call_command('database_inventory_report', json=True, include_quality_checks=True, stdout=output)
+        response = HttpResponse(output.getvalue(), content_type='application/json')
+        response['Content-Disposition'] = 'attachment; filename="database_inventory.json"'
+        
+    return response

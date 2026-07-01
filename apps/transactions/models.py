@@ -65,6 +65,20 @@ class Expenditure(models.Model):
     source = models.ForeignKey(Source, on_delete=models.SET_NULL, null=True, blank=True)
     document_page = models.ForeignKey(DocumentPage, on_delete=models.SET_NULL, null=True, blank=True)
     review_status = models.CharField(max_length=30, choices=ReviewStatus.choices, default=ReviewStatus.PROPOSED)
+    
+    # Milestone 1 attributes extension
+    candidate_measure = models.CharField(max_length=255, blank=True, help_text="Supported or opposed candidate/measure")
+    agent_contractor = models.CharField(max_length=255, blank=True)
+    subcontractor = models.CharField(max_length=255, blank=True)
+    filing_id = models.CharField(max_length=100, blank=True)
+    filing_period = models.CharField(max_length=100, blank=True)
+    source_locator = models.CharField(max_length=100, blank=True)
+    extraction_status = models.CharField(max_length=50, default='SUCCESS')
+    amendment_status = models.CharField(max_length=50, default='ORIGINAL')
+    superseded_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='supersedes')
+    import_batch = models.ForeignKey('audit.ImportBatch', on_delete=models.SET_NULL, null=True, blank=True, related_name='expenditures')
+    raw_extraction_data = models.TextField(blank=True)
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_expenditures')
 
     def __str__(self):
         return f"{self.public_id}: ${self.amount} to {self.payee_raw_name}"

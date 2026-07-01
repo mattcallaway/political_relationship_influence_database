@@ -10,4 +10,5 @@ urlpatterns = [
     path('collections/<uuid:collection_id>/', views.collection_detail, name='collection_detail'),
     path('network/', views.network_explorer, name='network_explorer'),
     path('compare/', views.compare_entities, name='compare_entities'),
+    path('inventory/download/', views.download_inventory, name='download_inventory'),
 ]

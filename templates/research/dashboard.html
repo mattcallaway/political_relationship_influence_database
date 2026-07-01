@@ -3,14 +3,18 @@
 {% block title %}Research & Quality Dashboard - Sonoma County Political Relationship Database{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:2rem; display:flex; justify-content:space-between; align-items:center;">
+<div style="margin-bottom:2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
     <div>
         <h2 style="font-family:'Outfit', sans-serif; font-size:1.8rem; font-weight:700; color:#fff;">Civic Research & System Diagnostics</h2>
         <p style="color:var(--text-muted); font-size:0.95rem; margin-top:0.25rem;">A multi-dimensional analytical view of campaign financing, lobbying, government decisions, and evidentiary graph connections.</p>
     </div>
-    <span class="badge" style="background:#1e293b; border:1px solid var(--border-color); color:#fff; font-size:0.8rem; padding:0.4rem 0.8rem;">
-        Database Status: <strong>ONLINE</strong>
-    </span>
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+        <a href="{% url 'download_inventory' %}?format=json" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">Download JSON Inventory</a>
+        <a href="{% url 'download_inventory' %}?format=markdown" class="btn" style="font-size:0.8rem; padding:0.4rem 0.8rem;">Download Markdown Inventory</a>
+        <span class="badge" style="background:#1e293b; border:1px solid var(--border-color); color:#fff; font-size:0.8rem; padding:0.4rem 0.8rem;">
+            Database Status: <strong>ONLINE</strong>
+        </span>
+    </div>
 </div>
 
 <!-- SECTION 1: DATABASE SUMMARY (Base Counts) -->

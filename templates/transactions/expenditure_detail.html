@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Expenditure Inspector - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <a href="{% url 'expenditure_list' %}" class="btn btn-secondary" style="font-size:0.85rem;">&larr; Back to Ledger</a>
+    <div style="display:flex; gap:0.5rem;">
+        <a href="{% url 'expenditure_edit' expenditure.id %}" class="btn" style="font-size:0.8rem;">Edit Record</a>
+    </div>
+</div>
+
+<div class="card" style="padding:2rem; margin-bottom:2rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(15, 23, 42, 0.9) 100%); border-left: 4px solid var(--accent-emerald);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1.5rem;">
+        <div>
+            <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:0.25rem;">Expenditure Amount</span>
+            <strong style="font-size:2.5rem; color:#fff; display:block; font-family:monospace; margin-bottom:0.5rem;">${{ expenditure.amount|stringformat:".2f" }}</strong>
+            <p style="color:var(--text-muted); font-size:0.95rem; display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <span>Filer Committee: <a href="/entity/{{ expenditure.filer_committee.public_id }}/" style="font-weight:bold; color:#fff; text-decoration:none;">{{ expenditure.filer_committee.canonical_name }}</a></span>
+                <span>Payee/Vendor: 
+                    {% if expenditure.payee_entity %}
+                    <a href="/entity/{{ expenditure.payee_entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue); text-decoration:none;">{{ expenditure.payee_raw_name }}</a>
+                    {% else %}
+                    <strong style="color:#fff;">{{ expenditure.payee_raw_name }}</strong>
+                    {% endif %}
+                </span>
+            </p>
+        </div>
+        <div style="text-align:right; display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
+            <span class="badge {% if expenditure.review_status == 'REVIEWED' or expenditure.review_status == 'VERIFIED' %}badge-approved{% else %}badge-proposed{% endif %}" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
+                {{ expenditure.get_review_status_display }}
+            </span>
+            <span class="badge" style="background:#1e293b; color:var(--text-muted); font-size:0.75rem; border:1px solid var(--border-color);">
+                Public ID: {{ expenditure.public_id }}
+            </span>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem; align-items:flex-start;">
+    <!-- Core Details -->
+    <div class="card" style="padding:1.5rem;">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Expenditure Metadata</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem;">
+            <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">TRANSACTION DATE</span>
+                <strong>{{ expenditure.transaction_date|date:'Y-m-d'|default:"-" }}</strong>
+            </div>
+            <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">EXPENDITURE CODE / CLASS</span>
+                <code>{{ expenditure.transaction_code|default:"Uncoded" }}</code>
+            </div>
+            <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">SCHEDULE</span>
+                <strong>{{ expenditure.schedule }}</strong>
+            </div>
+            <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">CANDIDATE/MEASURE SUPPORTED/OPPOSED</span>
+                <strong>{{ expenditure.candidate_measure|default:"None documented" }}</strong>
+            </div>
+            <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">PRIME AGENT / CONTRACTOR</span>
+                <strong>{{ expenditure.agent_contractor|default:"None" }}</strong>
+            </div>
+            <div>
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">SUBCONTRACTOR</span>
+                <strong>{{ expenditure.subcontractor|default:"None" }}</strong>
+            </div>
+            <div style="grid-column:span 2;">
+                <span style="font-size:0.75rem; color:var(--text-muted); display:block;">DESCRIPTION / PURPOSE OF EXPENSE</span>
+                <p style="margin-top:0.25rem; font-size:0.95rem; color:#cbd5e1; background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:4px; border:1px solid var(--border-color);">
+                    {{ expenditure.description|default:"No description recorded." }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Provenance & Ingestion -->
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+        <div class="card" style="padding:1.5rem;">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Source Provenance</h3>
+            <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem;">
+                <div>
+                    <span style="color:var(--text-muted); display:block;">SOURCE FILE</span>
+                    {% if expenditure.source %}
+                    <strong style="color:var(--accent-blue);">{{ expenditure.source.title }}</strong>
+                    {% else %}
+                    <span style="color:var(--accent-rose);">No source document attached</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <span style="color:var(--text-muted); display:block;">PAGE COORDINATES</span>
+                    <code>{{ expenditure.source_locator|default:"Not specified" }}</code>
+                </div>
+                <div>
+                    <span style="color:var(--text-muted); display:block;">IMPORT METHOD</span>
+                    <strong>{{ expenditure.get_review_status_display }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Expenditure Ledger - Sonoma Civic Platform{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff;">Expenditure & Campaign Vendor Ledger</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">Authoritative record of campaign expenditures, contractor payouts, and public relations spending in Sonoma County.</p>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{% url 'expenditure_create' %}" class="btn" style="font-size:0.85rem;">Record Manual Expenditure</a>
+            <a href="{% url 'expenditure_import_csv' %}" class="btn btn-secondary" style="font-size:0.85rem;">Import CSV</a>
+            <a href="?export=csv&payee={{ payee }}&committee={{ committee }}&code={{ code }}&cycle={{ cycle }}&min_amount={{ min_amount }}&max_amount={{ max_amount }}" class="btn btn-secondary" style="font-size:0.85rem;">Export CSV</a>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
+    <form method="get" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:1rem; align-items:flex-end;">
+        <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">PAYEE / VENDOR</label>
+            <input type="text" name="payee" value="{{ payee }}" placeholder="Search vendor..." style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">FILER COMMITTEE</label>
+            <input type="text" name="committee" value="{{ committee }}" placeholder="Search committee..." style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">EXP CODE</label>
+            <input type="text" name="code" value="{{ code }}" placeholder="CMP, CNS..." style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">CYCLE (YEAR)</label>
+            <input type="text" name="cycle" value="{{ cycle }}" placeholder="2026" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">MIN AMOUNT</label>
+            <input type="number" name="min_amount" value="{{ min_amount }}" placeholder="0" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+            <button type="submit" class="btn" style="width:100%; padding:0.55rem; font-size:0.85rem;">Filter Ledger</button>
+        </div>
+    </form>
+</div>
+
+<!-- Ledger Table -->
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Filer Committee</th>
+                <th>Payee / Vendor</th>
+                <th>Date</th>
+                <th>Code</th>
+                <th>Amount</th>
+                <th>Verification</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for exp in expenditures %}
+            <tr>
+                <td>
+                    <a href="/entity/{{ exp.filer_committee.public_id }}/" style="font-weight:bold; color:#fff; text-decoration:none;">{{ exp.filer_committee.canonical_name }}</a>
+                </td>
+                <td>
+                    {% if exp.payee_entity %}
+                    <a href="/entity/{{ exp.payee_entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue); text-decoration:none;">{{ exp.payee_raw_name }}</a>
+                    {% else %}
+                    <strong>{{ exp.payee_raw_name }}</strong>
+                    {% endif %}
+                </td>
+                <td style="font-family:monospace;">{{ exp.transaction_date|date:'Y-m-d'|default:"-" }}</td>
+                <td><code style="background:rgba(255,255,255,0.05); padding:0.15rem 0.35rem; border-radius:4px;">{{ exp.transaction_code|default:"-" }}</code></td>
+                <td style="font-family:monospace; font-weight:bold; color:var(--accent-emerald);">${{ exp.amount|stringformat:".2f" }}</td>
+                <td>
+                    <span class="badge {% if exp.review_status == 'REVIEWED' or exp.review_status == 'VERIFIED' %}badge-approved{% else %}badge-proposed{% endif %}" style="font-size:0.7rem;">
+                        {{ exp.get_review_status_display }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{% url 'expenditure_detail' exp.id %}" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Inspect</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align:center; color:var(--text-muted); padding:3rem 0;">No expenditures matching filters found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
