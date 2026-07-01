@@ -75,6 +75,20 @@ def test_digital_netfile_extraction():
     assert metrics["amount_accuracy"] == 100.0
     assert metrics["date_accuracy"] == 100.0
 
+    # Verify Schedule E payments made extraction on Page 5
+    fields_e = ExtractedField.objects.filter(extraction_job=job, page__page_number=5)
+    block_fields_e = [f for f in fields_e if f.field_type.startswith("expenditure_block_")]
+    assert len(block_fields_e) == 3, f"Expected 3 visual expenditure blocks on page 5, got {len(block_fields_e)}"
+
+    first_exp_data = json.loads(block_fields_e[0].normalized_proposed_value)
+    assert first_exp_data["payee_name"] == "ActBlue Technical Services"
+    assert first_exp_data["amount"] == 0.90
+    assert first_exp_data["payee_code"] == "OFC"
+
+    # Verify database persistence
+    from apps.transactions.models import Expenditure
+    assert Expenditure.objects.filter(payee_raw_name="ActBlue Technical Services", amount=0.90).exists()
+
 @pytest.mark.django_db
 def test_scanned_pdf_mock_extraction():
     # We test the scanned PDF extraction using the mock OCR preprocessor path

@@ -10,4 +10,5 @@ urlpatterns = [
     path('expenditures/import/', views.expenditure_import_csv, name='expenditure_import_csv'),
     path('expenditures/<uuid:expenditure_id>/', views.expenditure_detail, name='expenditure_detail'),
     path('expenditures/<uuid:expenditure_id>/edit/', views.expenditure_edit, name='expenditure_edit'),
+    path('reconcile/', views.trigger_reconciliation, name='trigger_reconciliation'),
 ]

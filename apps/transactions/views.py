@@ -259,3 +259,27 @@ def expenditure_import_csv(request):
         return redirect('expenditure_list')
         
     return render(request, 'transactions/expenditure_import.html', {})
+
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+
+@require_POST
+def trigger_reconciliation(request):
+    from apps.audit.models import ImportBatch
+    from apps.transactions.reconciliation import reconcile_amendment_batches
+    
+    old_batch_id = request.POST.get('old_batch_id')
+    new_batch_id = request.POST.get('new_batch_id')
+    
+    old_batch = get_object_or_404(ImportBatch, id=old_batch_id)
+    new_batch = get_object_or_404(ImportBatch, id=new_batch_id)
+    
+    reconcile_amendment_batches(old_batch, new_batch)
+    
+    messages.success(request, f"Successfully reconciled old batch '{old_batch.batch_name}' with new amendment batch '{new_batch.batch_name}'!")
+    
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
+    return redirect('imports_management')

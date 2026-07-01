@@ -256,3 +256,97 @@ def catalog_contributor_block(record, page, import_batch=None, session_cache=Non
             )
             
     return con
+
+def catalog_expenditure_block(record, page, import_batch=None, session_cache=None):
+    """
+    Parses and catalogs an extracted Schedule E payment/expenditure block.
+    """
+    from apps.transactions.models import Expenditure
+    payee_name = record.get("payee_name", "").strip()
+    payee_code = record.get("payee_code", "").strip() or "OTH"
+    amount = record.get("amount", 0.0)
+    description = record.get("description", "").strip()
+    
+    if not payee_name:
+        return None
+        
+    # Standard name matching
+    matched_entity, match_method, match_metrics, candidates = find_best_entity_match(
+        payee_name, "IND", "", "", "", "", ""
+    )
+    
+    prefix = 'P' if (matched_entity and matched_entity.entity_type == 'PERSON') else 'ORG'
+    etype = EntityType.PERSON if prefix == 'P' else EntityType.ORGANIZATION
+    
+    # Review status
+    con_status = ReviewStatus.AUTO_IMPORTED
+    if matched_entity:
+        if match_method in ("EXACT_COMMITTEE_ID", "EXACT_NORMALIZED_NAME", "EXACT_ALIAS") or (
+            match_method in ("HIGH_CONFIDENCE_FUZZY") and match_metrics.get("score", 0) >= 95.0
+        ):
+            con_status = ReviewStatus.AUTO_MATCHED
+        else:
+            con_status = ReviewStatus.NEEDS_REVIEW
+    else:
+        # Create a new PROVISIONAL_AUTO_CREATED Entity
+        with transaction.atomic():
+            pub_id = generate_next_public_id(prefix)
+            matched_entity = Entity.objects.create(
+                public_id=pub_id,
+                canonical_name=payee_name,
+                entity_type=etype,
+                status=EntityStatus.PROVISIONAL_AUTO_CREATED
+            )
+            Alias.objects.create(
+                entity=matched_entity,
+                alias_text=payee_name,
+                normalized_alias=normalize_text(payee_name)
+            )
+            if etype == EntityType.PERSON:
+                Person.objects.create(
+                    entity=matched_entity,
+                    display_name=payee_name
+                )
+            else:
+                Organization.objects.create(
+                    entity=matched_entity,
+                    legal_name=payee_name
+                )
+                
+    # Get or create Filer Committee Entity
+    filer_entity = get_or_create_filer_entity(record.get("committee_name"), record.get("committee_id"))
+    
+    # Parse Date
+    date_val = None
+    date_str = record.get("date")
+    if date_str:
+        try:
+            import datetime
+            parts = date_str.split("/")
+            if len(parts) == 3:
+                month, day, year = int(parts[0]), int(parts[1]), int(parts[2])
+                if year < 100:
+                    year += 2000
+                date_val = datetime.date(year, month, day)
+        except Exception:
+            pass
+            
+    # Generate sequential public ID for expenditure
+    count = Expenditure.objects.count()
+    exp_pub_id = f"EXP{count + 1:06d}"
+    
+    exp = Expenditure.objects.create(
+        public_id=exp_pub_id,
+        filer_committee=filer_entity,
+        payee_entity=matched_entity,
+        payee_raw_name=payee_name,
+        transaction_date=date_val,
+        amount=amount,
+        description=description,
+        schedule='Schedule E',
+        transaction_code=payee_code,
+        document_page=page,
+        import_batch=import_batch,
+        review_status=con_status
+    )
+    return exp

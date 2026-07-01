@@ -80,6 +80,11 @@
                     <span class="badge {% if con.review_status == 'VERIFIED' %}badge-approved{% elif con.review_status == 'NEEDS_REVIEW' %}badge-proposed{% else %}badge-verified{% endif %}" style="font-size:0.7rem;">
                         {{ con.review_status }}
                     </span>
+                    {% if con.amendment_status == 'SUPERSEDED' %}
+                    <span class="badge" style="font-size:0.7rem; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#f87171; margin-left:0.25rem;">SUPERSEDED</span>
+                    {% elif con.amendment_status == 'AMENDED' %}
+                    <span class="badge" style="font-size:0.7rem; background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.4); color:#fbbf24; margin-left:0.25rem;">AMENDED</span>
+                    {% endif %}
                 </td>
                 <td>
                     {% if con.source %}

@@ -39,6 +39,8 @@ class Contribution(models.Model):
     document_page = models.ForeignKey(DocumentPage, on_delete=models.SET_NULL, null=True, blank=True)
     source_locator = models.CharField(max_length=100, blank=True)
     review_status = models.CharField(max_length=30, choices=ReviewStatus.choices, default=ReviewStatus.AUTO_IMPORTED)
+    amendment_status = models.CharField(max_length=50, default='ORIGINAL')
+    superseded_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='supersedes')
     
     document = models.ForeignKey('documents.Document', on_delete=models.CASCADE, null=True, blank=True, related_name='contributions')
     extracted_block = models.ForeignKey('extraction.ExtractedContributorBlock', on_delete=models.SET_NULL, null=True, blank=True, related_name='contributions')

@@ -80,6 +80,11 @@
                     <span class="badge {% if exp.review_status == 'REVIEWED' or exp.review_status == 'VERIFIED' %}badge-approved{% else %}badge-proposed{% endif %}" style="font-size:0.7rem;">
                         {{ exp.get_review_status_display }}
                     </span>
+                    {% if exp.amendment_status == 'SUPERSEDED' %}
+                    <span class="badge" style="font-size:0.7rem; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#f87171; margin-left:0.25rem;">SUPERSEDED</span>
+                    {% elif exp.amendment_status == 'AMENDED' %}
+                    <span class="badge" style="font-size:0.7rem; background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.4); color:#fbbf24; margin-left:0.25rem;">AMENDED</span>
+                    {% endif %}
                 </td>
                 <td>
                     <a href="{% url 'expenditure_detail' exp.id %}" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Inspect</a>

@@ -403,6 +403,73 @@
                 </table>
             </div>
         </div>
+
+        <!-- Expenditures section -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
+            <!-- Expenditures Made -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Campaign Expenditures Made</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Payee / Vendor</th>
+                            <th>Date</th>
+                            <th>Code</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in expenditures_made %}
+                        <tr>
+                            <td>
+                                {% if e.payee_entity %}
+                                <a href="/entity/{{ e.payee_entity.public_id }}/">{{ e.payee_raw_name }}</a>
+                                {% else %}
+                                {{ e.payee_raw_name }}
+                                {% endif %}
+                            </td>
+                            <td style="font-family:monospace;">{{ e.transaction_date|date:'Y-m-d'|default:"-" }}</td>
+                            <td><code style="background:rgba(255,255,255,0.05); padding:0.15rem 0.35rem; border-radius:4px;">{{ e.transaction_code|default:"-" }}</code></td>
+                            <td style="color:var(--accent-emerald); font-weight:bold; font-family:monospace;">${{ e.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No campaign expenditures recorded.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Expenditures Received / Payouts -->
+            <div class="card">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Campaign Payouts Received (as Vendor/Consultant)</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Paying Committee</th>
+                            <th>Date</th>
+                            <th>Code</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in expenditures_received %}
+                        <tr>
+                            <td><a href="/entity/{{ e.filer_committee.public_id }}/">{{ e.filer_committee.canonical_name }}</a></td>
+                            <td style="font-family:monospace;">{{ e.transaction_date|date:'Y-m-d'|default:"-" }}</td>
+                            <td><code style="background:rgba(255,255,255,0.05); padding:0.15rem 0.35rem; border-radius:4px;">{{ e.transaction_code|default:"-" }}</code></td>
+                            <td style="color:var(--accent-emerald); font-weight:bold; font-family:monospace;">${{ e.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" style="color:var(--text-muted); text-align:center; padding:1rem 0;">No payouts received.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- TAB 5: LOBBYING & BOARD APPOINTMENTS -->

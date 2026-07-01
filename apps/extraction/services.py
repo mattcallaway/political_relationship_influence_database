@@ -76,6 +76,69 @@ def clean_amount(val_str):
     except ValueError:
         return 0.0
 
+def segment_schedule_e_page(words, rotation, page_width, page_height):
+    from apps.extraction.geometry import get_visual_rect, get_visual_width_height
+    v_width, v_height = get_visual_width_height(rotation, page_width, page_height)
+    
+    visual_words = []
+    subtotal_vy = v_height
+    for w in words:
+        rect = (w[0], w[1], w[2], w[3])
+        vx0, vy0, vx1, vy1 = get_visual_rect(rect, rotation, page_width, page_height)
+        
+        text = w[4].strip()
+        # Find subtotal marker to anchor end of page
+        if text.upper() in ("SUBTOTAL", "SUBTOTALS") and vy0 > 250:
+            if vy0 < subtotal_vy:
+                subtotal_vy = vy0
+                
+        visual_words.append({
+            "vx0": vx0, "vy0": vy0, "vx1": vx1, "vy1": vy1,
+            "text": text,
+            "original_tuple": w
+        })
+        
+    # Find row anchors in the amount column (vx0 between 680 and 780 in visual space)
+    amount_anchors = []
+    for vw in visual_words:
+        if 680 <= vw["vx0"] <= 780:
+            val_str = vw["text"].replace(",", "")
+            # Check if text is a valid float
+            if re.match(r'^\d+\.\d{2}$', val_str) or re.match(r'^\d+$', val_str):
+                # Filter out header/footer amounts
+                if 270 <= vw["vy0"] <= subtotal_vy:
+                    amount_anchors.append(vw)
+                    
+    # Sort and dedup anchors
+    amount_anchors.sort(key=lambda x: x["vy0"])
+    unique_anchors = []
+    for anchor in amount_anchors:
+        if not unique_anchors or abs(anchor["vy0"] - unique_anchors[-1]["vy0"]) > 10:
+            unique_anchors.append(anchor)
+            
+    # Create block slices
+    blocks = []
+    for i, anchor in enumerate(unique_anchors):
+        vy_start = anchor["vy0"] - 10
+        if i + 1 < len(unique_anchors):
+            vy_end = unique_anchors[i+1]["vy0"] - 10
+        else:
+            vy_end = subtotal_vy - 5
+            
+        block_words = [
+            vw for vw in visual_words
+            if vy_start <= vw["vy0"] < vy_end and vw["vy0"] < subtotal_vy
+        ]
+        
+        blocks.append({
+            "block_number": i + 1,
+            "vy_start": vy_start,
+            "vy_end": vy_end,
+            "words": block_words,
+            "amount_text": anchor["text"]
+        })
+    return blocks
+
 def parse_form_460(document):
     """
     Main ingestion pipeline entry point for Form 460 extraction.
@@ -108,24 +171,27 @@ def parse_form_460(document):
         for page in document.pages.all():
             text = page.extracted_text or ""
             
-            # Check if this page is a Schedule A page
+            # Check if this page is a Schedule A or Schedule E page
             schedule_a_indicators = ("SCHEDULE A", "MONETARY CONTRIBUTIONS", "FULL NAME", "CONTRIBUTOR CODE")
+            schedule_e_indicators = ("SCHEDULE E", "PAYMENTS MADE", "NAME AND ADDRESS OF PAYEE", "AMOUNT PAID")
             is_schedule_a = any(ind in text.upper() for ind in schedule_a_indicators)
+            is_schedule_e = any(ind in text.upper() for ind in schedule_e_indicators)
             
-            # For scanned pages (empty text), check the page index or fall back to OCR
-            if not is_schedule_a and len(text.strip()) < 10:
-                # Run OCR preprocessor to retrieve words with coordinates
-                words = perform_ocr_on_page(document.file_path.path, page.page_number, original_filename=document.original_filename)
-                if words:
-                    is_schedule_a = True
-            else:
-                # Born digital
-                import fitz
-                doc_fitz = fitz.open(document.file_path.path)
-                page_fitz = doc_fitz[page.page_number - 1]
-                words = page_fitz.get_text("words")
-                
-            if not is_schedule_a:
+            words = []
+            if (is_schedule_a or is_schedule_e) or len(text.strip()) < 10:
+                if len(text.strip()) < 10:
+                    words = perform_ocr_on_page(document.file_path.path, page.page_number, original_filename=document.original_filename)
+                    if words:
+                        ocr_full_text = " ".join([w[4] for w in words]).upper()
+                        is_schedule_a = any(ind in ocr_full_text for ind in schedule_a_indicators)
+                        is_schedule_e = any(ind in ocr_full_text for ind in schedule_e_indicators)
+                else:
+                    import fitz
+                    doc_fitz = fitz.open(document.file_path.path)
+                    page_fitz = doc_fitz[page.page_number - 1]
+                    words = page_fitz.get_text("words")
+                    
+            if not is_schedule_a and not is_schedule_e:
                 continue
                 
             rotation = 90  # Default rotation for landscape NetFile PDFs
@@ -157,8 +223,10 @@ def parse_form_460(document):
             except Exception:
                 pass
                 
-            # Segment the page into visual contributor blocks
-            blocks = segment_page_into_blocks(words, rotation, page_width, page_height)
+            if is_schedule_a:
+                blocks = segment_page_into_blocks(words, rotation, page_width, page_height)
+            else:
+                blocks = segment_schedule_e_page(words, rotation, page_width, page_height)
             
             # Read filer metadata from the top header
             # Filer Name is usually visually located around vx in [100, 760], vy in [90, 130]
@@ -183,6 +251,69 @@ def parse_form_460(document):
                 elif "fppc460" in base_name:
                     filer_name = base_name.split("fppc460")[0].replace("_", " ").strip()
             
+            
+            if is_schedule_e:
+                for b in blocks:
+                    block_words = b["words"]
+                    vy_start = b["vy_start"]
+                    vy_end = b["vy_end"]
+                    
+                    payee_words = [w for w in block_words if 20 <= w["vx0"] <= 380]
+                    code_words = [w for w in block_words if 380 < w["vx0"] <= 450]
+                    desc_words = [w for w in block_words if 450 < w["vx0"] <= 700]
+                    amount_words = [w for w in block_words if 700 < w["vx0"] <= 792]
+                    
+                    payee_lines = words_to_lines(payee_words)
+                    code_lines = words_to_lines(code_words)
+                    desc_lines = words_to_lines(desc_words)
+                    amount_lines = words_to_lines(amount_words)
+                    
+                    payee_name = payee_lines[0].strip() if payee_lines else ""
+                    if not payee_name:
+                        continue
+                    payee_address = " ".join(payee_lines[1:]).strip() if len(payee_lines) > 1 else ""
+                    
+                    code = code_lines[0].strip() if code_lines else ""
+                    description = " ".join(desc_lines).strip() if desc_lines else ""
+                    
+                    amount_str = amount_lines[0].strip() if amount_lines else b["amount_text"]
+                    amount_val = clean_amount(amount_str)
+                    
+                    raw_block_text = " | ".join(words_to_lines(block_words))
+                    
+                    record = {
+                        "filing_id": str(job.id),
+                        "committee_name": filer_name,
+                        "committee_id": committee_id,
+                        "document_id": str(document.id),
+                        "source_pdf_filename": document.original_filename,
+                        "page_number": page.page_number,
+                        "schedule_type": "E",
+                        "visual_block_number": b["block_number"],
+                        "payee_name": payee_name,
+                        "payee_code": code,
+                        "amount": amount_val,
+                        "description": description,
+                        "raw_block_text": raw_block_text
+                    }
+                    
+                    ExtractedField.objects.create(
+                        extraction_job=job,
+                        page=page,
+                        field_type=f"expenditure_block_{b['block_number']}",
+                        raw_value=raw_block_text,
+                        normalized_proposed_value=json.dumps(record),
+                        confidence_score=90.0,
+                        reviewer_status=FieldReviewStatus.PROPOSED
+                    )
+                    
+                    try:
+                        from apps.extraction.cataloger import catalog_expenditure_block
+                        catalog_expenditure_block(record, page, import_batch=batch, session_cache=session_cache)
+                    except Exception as ex:
+                        logger.error(f"Cataloger failed for Schedule E block {b['block_number']}: {ex}", exc_info=True)
+                continue
+
             # Process each visual contributor block
             for b in blocks:
                 # Reprocessing Protection
