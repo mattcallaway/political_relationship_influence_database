@@ -19,39 +19,39 @@ def test_database_backup_command(settings):
     with open(fake_db, "w") as f:
         f.write("sqlite database placeholder")
         
-    settings.DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': fake_db
-    }
+    original_db_name = settings.DATABASES['default']['NAME']
+    settings.DATABASES['default']['NAME'] = fake_db
     
-    # Run the backup command
-    out = io.StringIO()
-    call_command('database_backup', stdout=out)
-    output = out.getvalue()
-    assert "integrity check passed" in output
-    assert "Backup created successfully" in output
+    try:
+        # Run the backup command
+        out = io.StringIO()
+        call_command('database_backup', stdout=out)
+        output = out.getvalue()
+        assert "integrity check passed" in output
+        assert "Backup created successfully" in output
 
-    backup_dir = os.path.join(temp_dir, 'backups')
-    assert os.path.exists(backup_dir)
-    
-    files = glob.glob(os.path.join(backup_dir, 'db_backup_*.sqlite3'))
-    assert len(files) == 1
+        backup_dir = os.path.join(temp_dir, 'backups')
+        assert os.path.exists(backup_dir)
+        
+        files = glob.glob(os.path.join(backup_dir, 'db_backup_*.sqlite3'))
+        assert len(files) == 1
 
-    # Test pruning logic by creating 6 fake backup files and running command again
-    for i in range(6):
-        fake_path = os.path.join(backup_dir, f"db_backup_20260701_00000{i}.sqlite3")
-        with open(fake_path, 'w') as f:
-            f.write("fake backup")
-    
-    # Run backup again
-    call_command('database_backup', stdout=out)
-    
-    # Assert backups folder size has pruned down to exactly 5 backups
-    files_after = glob.glob(os.path.join(backup_dir, 'db_backup_*.sqlite3'))
-    assert len(files_after) == 5
-
-    # Clean up temp dir
-    shutil.rmtree(temp_dir)
+        # Test pruning logic by creating 6 fake backup files and running command again
+        for i in range(6):
+            fake_path = os.path.join(backup_dir, f"db_backup_20260701_00000{i}.sqlite3")
+            with open(fake_path, 'w') as f:
+                f.write("fake backup")
+        
+        # Run backup again
+        call_command('database_backup', stdout=out)
+        
+        # Assert backups folder size has pruned down to exactly 5 backups
+        files_after = glob.glob(os.path.join(backup_dir, 'db_backup_*.sqlite3'))
+        assert len(files_after) == 5
+    finally:
+        # Clean up temp dir and restore database settings
+        shutil.rmtree(temp_dir)
+        settings.DATABASES['default']['NAME'] = original_db_name
 
 @pytest.mark.django_db
 def test_rollback_import_command():

@@ -114,6 +114,7 @@ class EntityMerge(models.Model):
     reversible = models.BooleanField(default=True)
     is_reversed = models.BooleanField(default=False)
     reason = models.TextField(blank=True)
+    reassigned_relations = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         status = "Reversed" if self.is_reversed else "Active"

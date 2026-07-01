@@ -95,6 +95,22 @@ def rematch_contribution(request, contribution_id):
         
     return redirect('review_side_by_side', document_id=con.document.id)
 
+def find_entity_relations(entity):
+    from django.apps import apps
+    from django.db.models import ForeignKey
+    from apps.entities.models import Entity
+    
+    relations = []
+    for model in apps.get_models():
+        for field in model._meta.get_fields():
+            if isinstance(field, ForeignKey) and field.related_model == Entity:
+                # Find all records where this field equals our entity
+                filter_kwargs = {field.name: entity}
+                matching_records = model.objects.filter(**filter_kwargs)
+                for record in matching_records:
+                    relations.append((model, field.name, record))
+    return relations
+
 @require_POST
 def merge_entities(request, source_entity_id):
     source_entity = get_object_or_404(Entity, id=source_entity_id)
@@ -107,19 +123,23 @@ def merge_entities(request, source_entity_id):
     target_entity = get_object_or_404(Entity, id=target_entity_id)
     
     with transaction.atomic():
-        # Record merge relationship
-        merge_rec = EntityMerge.objects.create(
-            source_entity=source_entity,
-            target_entity=target_entity,
-            merged_by=request.user if request.user.is_authenticated else None,
-            reason=reason
-        )
+        reassigned_relations = {}
         
-        # Reassign all linked transactions of source to target
-        contributions = Contribution.objects.filter(donor_entity=source_entity)
-        for con in contributions:
-            con.donor_entity = target_entity
-            con.save()
+        # Scan and reassign all pointing foreign keys dynamically
+        for model, field_name, record in find_entity_relations(source_entity):
+            # Exclude EntityMerge and Entity itself
+            if model.__name__ == 'EntityMerge':
+                continue
+                
+            model_key = f"{model._meta.app_label}.{model.__name__}"
+            if model_key not in reassigned_relations:
+                reassigned_relations[model_key] = {}
+            if field_name not in reassigned_relations[model_key]:
+                reassigned_relations[model_key][field_name] = []
+                
+            setattr(record, field_name, target_entity)
+            record.save()
+            reassigned_relations[model_key][field_name].append(str(record.id))
             
         # Save source name as alias on target
         Alias.objects.get_or_create(
@@ -129,6 +149,15 @@ def merge_entities(request, source_entity_id):
                 'normalized_alias': source_entity.canonical_name.lower().strip(),
                 'alias_type': 'MERGED_NAME'
             }
+        )
+        
+        # Record merge relationship
+        merge_rec = EntityMerge.objects.create(
+            source_entity=source_entity,
+            target_entity=target_entity,
+            merged_by=request.user if request.user.is_authenticated else None,
+            reason=reason,
+            reassigned_relations=reassigned_relations
         )
         
         # Update source entity status to MERGED
@@ -146,7 +175,6 @@ def merge_entities(request, source_entity_id):
             reason=reason or "Provisional entity merged into target entity."
         )
         
-    # Find a document associated with the contributions to redirect back
     doc_id = request.POST.get('document_id')
     if doc_id:
         return redirect('review_side_by_side', document_id=doc_id)
@@ -154,6 +182,7 @@ def merge_entities(request, source_entity_id):
 
 @require_POST
 def reverse_entity_merge(request, merge_id):
+    from django.apps import apps
     merge_rec = get_object_or_404(EntityMerge, id=merge_id)
     
     if merge_rec.is_reversed:
@@ -165,13 +194,20 @@ def reverse_entity_merge(request, merge_id):
         source.status = EntityStatus.PROVISIONAL_AUTO_CREATED
         source.save()
         
-        # Re-link transactions that originally belonged to source
-        # (This is handled by scanning merge history or re-running prior linkings,
-        # but to keep it simple, we link back contributions that were parsed under this source's name)
-        contributions = Contribution.objects.filter(donor_entity=merge_rec.target_entity, donor_raw_name=source.canonical_name)
-        for con in contributions:
-            con.donor_entity = source
-            con.save()
+        # Re-link relations that originally belonged to source
+        reassigned = merge_rec.reassigned_relations or {}
+        for model_key, fields_data in reassigned.items():
+            app_label, model_name = model_key.split('.')
+            model = apps.get_model(app_label, model_name)
+            
+            for field_name, record_ids in fields_data.items():
+                for rid in record_ids:
+                    try:
+                        record = model.objects.get(id=rid)
+                        setattr(record, field_name, source)
+                        record.save()
+                    except model.DoesNotExist:
+                        pass
             
         # Mark merge record as reversed
         merge_rec.is_reversed = True
