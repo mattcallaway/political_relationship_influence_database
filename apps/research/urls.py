@@ -15,4 +15,5 @@ urlpatterns = [
     path('network/', views.network_explorer, name='network_explorer'),
     path('compare/', views.compare_entities, name='compare_entities'),
     path('inventory/download/', views.download_inventory, name='download_inventory'),
+    path('methodology/', views.methodology_page, name='methodology_page'),
 ]

@@ -751,3 +751,6 @@ def add_item_to_collection(request):
     if referer:
         return redirect(referer)
     return redirect('collection_detail', collection_id=collection.id)
+
+def methodology_page(request):
+    return render(request, 'research/methodology.html')
