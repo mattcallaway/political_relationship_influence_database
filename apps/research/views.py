@@ -72,7 +72,7 @@ def research_dashboard(request):
     recent_audits = AuditEvent.objects.all().order_by('-timestamp')[:10]
 
     # Data-quality indicators
-    assertions_no_source = Assertion.objects.filter(assertion_sources=None).count()
+    assertions_no_source = Assertion.objects.filter(evidence_sources=None).count()
     transactions_no_locator = Contribution.objects.filter(source=None).count()
     verified_no_reviewer = Entity.objects.filter(status=EntityStatus.VERIFIED, updated_by=None).count()
     
@@ -80,7 +80,7 @@ def research_dashboard(request):
     duplicate_committees_query = Committee.objects.values('fppc_id').annotate(id_count=Count('id')).filter(id_count__gt=1).exclude(fppc_id='')
     duplicate_committee_ids = len(duplicate_committees_query)
     
-    missing_jurisdictions = Entity.objects.filter(jurisdiction='').count()
+    missing_jurisdictions = Campaign.objects.filter(jurisdiction='').count()
     
     stale_provisional_date = timezone.now() - datetime.timedelta(days=30)
     stale_provisional = Entity.objects.filter(status=EntityStatus.PROVISIONAL_AUTO_CREATED, created_at__lt=stale_provisional_date).count()
@@ -159,9 +159,9 @@ def data_quality(request):
         action = request.POST.get('action')
         if action == 'fix_jurisdictions':
             with transaction.atomic():
-                updated = Entity.objects.filter(jurisdiction='').update(jurisdiction='Sonoma County')
+                updated = Campaign.objects.filter(jurisdiction='').update(jurisdiction='Sonoma County')
                 DataQualityIssue.objects.filter(issue_type="Missing Jurisdiction").update(is_resolved=True)
-                messages.success(request, f"Successfully assigned 'Sonoma County' to {updated} entities!")
+                messages.success(request, f"Successfully assigned 'Sonoma County' to {updated} campaigns!")
         elif action == 'fix_assertions':
             with transaction.atomic():
                 updated = DataQualityIssue.objects.filter(issue_type="Missing Source Provenance").update(is_resolved=True)
@@ -172,13 +172,13 @@ def data_quality(request):
     DataQualityIssue.objects.filter(is_resolved=False).delete()
     
     # 1. Missing jurisdiction
-    no_jur = Entity.objects.filter(jurisdiction='')
-    for ent in no_jur:
+    no_jur = Campaign.objects.filter(jurisdiction='')
+    for camp in no_jur:
         DataQualityIssue.objects.get_or_create(
             issue_type="Missing Jurisdiction",
-            description=f"Entity '{ent.canonical_name}' has an empty jurisdiction field.",
-            affected_object_type="Entity",
-            affected_object_id=str(ent.id)
+            description=f"Campaign '{camp.campaign_name}' has an empty jurisdiction field.",
+            affected_object_type="Campaign",
+            affected_object_id=str(camp.id)
         )
         
     # 2. Assertions without sources

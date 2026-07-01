@@ -14,7 +14,7 @@ def entity_list(request):
         'name': 'canonical_name',
         'type': 'entity_type',
         'status': 'status',
-        'jurisdiction': 'jurisdiction',
+        'jurisdiction': 'public_id',
         'date_added': 'created_at',
         'date_updated': '-updated_at',
         'public_id': 'public_id'
