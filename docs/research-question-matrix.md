@@ -1,0 +1,19 @@
+# Research Question Matrix
+
+This matrix connects the core civic-research questions of the platform to their required entity schemas, transaction/event records, sources, current support status, and priority recommendations.
+
+---
+
+| Core Research Question | Required Entity Types | Required Transaction or Event Records | Required Sources | Current Application Support | Missing Functionality / Gaps | Recommended Priority |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Which campaigns hired a particular political consultant?** | `PERSON` (Consultant), `COMMITTEE` (Campaign) | `Expenditure` (Vendor payouts, subvendor info) | Form 460 Schedule E | Model supports, CSV import basic view | Campaign roles and consultant subvendor maps not in UI | **High** |
+| **Which committees paid a particular public-affairs firm?** | `ORGANIZATION` (Firm), `COMMITTEE` (Campaign) | `Expenditure` | Form 460 Schedule E | Model supports, basic detail views | Firm payment search filters on profile pages | **High** |
+| **Which clients retained a lobbying firm?** | `ORGANIZATION` (Firm), `PERSON` / `ORGANIZATION` (Client) | `LobbyingActivity` (Matter details, compensation) | Lobbyist registry filings | Basic model and views | Lobbying activities tab on Entity Profile | **Medium** |
+| **Which projects involved the same developers, attorneys, engineers, and consultants?** | `PERSON` / `ORGANIZATION` (Developers, attorneys), `PROJECT` (Real estate developments) | `Project` profiles, developer appointments | Planning application files, EIRs | Project models exist and show basic connections | Consolidated connections grid on project pages | **Medium** |
+| **Which public officials served on boards with connected private actors?** | `PERSON` (Officials, actors), `ORGANIZATION` (Board / Body) | `Appointment` (Appointee, appointer, body) | Form 700 (Statement of Economic Interests), Appointment logs | Appointment schemas exist | Active board listings showing concurrent Term dates | **Medium** |
+| **Which government bodies approved a project?** | `ORGANIZATION` (Government body), `PROJECT` (Project entity) | `Meeting` (Minutes, agenda item), `Motion` | Board of Supervisors / City Council meeting records | Meeting minutes and agenda schemas exist | Vote-to-project mappings on project detail page | **Low** |
+| **Who moved, seconded, and voted on a matter?** | `PERSON` (Supervisors), `ORGANIZATION` (Body) | `Meeting`, `AgendaItem`, `Motion`, `Vote` (Voter, vote_cast) | Meeting minutes | Vote schemas exist and list individual votes | Unified roll-call dashboard on meeting pages | **Medium** |
+| **Which campaign contributors or vendors were associated with a project?** | `PERSON` / `ORGANIZATION` (Contributors), `PROJECT` (Project) | `Contribution`, `Expenditure`, `Project` | Form 460 Schedule A/E, planning documents | Contributions and projects exist separately | Cross-domain overlap queries connecting donors to developer projects | **High** |
+| **Which relationships are verified and which remain research leads?** | `ANY` | `Assertion` (Claim type, verification status), `AuditEvent` | Document sources | Assertion verification exists in database | Visual status indicators separating verified from provisional paths | **High** |
+| **Which sources contradict an existing assertion?** | `ANY` | `Assertion` (VerificationStatus = `DISPUTED`), `AssertionSource` | Multiple conflicting documents | Verification status allows `DISPUTED` | Contradictory evidence tab displaying opposing source locator clips | **High** |
+| **What is known and unknown about the Muelrath Public Affairs network?** | `PERSON` (Muelrath), `ORGANIZATION` (Muelrath PA, campaigns, firms) | `Contribution`, `Expenditure`, `LobbyingActivity`, `Appointment`, `Vote` | Combined campaign, board, and meeting minutes filings | Basic database metrics exist | Specialized ResearchCollection command center dashboard tracking gaps | **Critical** |
