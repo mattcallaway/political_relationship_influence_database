@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ campaign.campaign_name }} - Campaign Profile{% endblock %}
+
+{% block breadcrumbs %}Campaigns &rsaquo; {{ campaign.campaign_name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <a href="/" class="btn btn-secondary" style="font-size:0.85rem;">&larr; Back to Directory</a>
+    
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <form method="post" action="{% url 'add_item_to_collection' %}" style="display:inline-flex; gap:0.25rem; margin:0; align-items:center;">
+            {% csrf_token %}
+            <input type="hidden" name="item_type" value="entity">
+            <input type="hidden" name="item_id" value="{{ campaign.entity.id }}">
+            <select name="collection_id" required style="font-size:0.8rem; padding:0.25rem; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:#fff; cursor:pointer;">
+                <option value="">Select Collection...</option>
+                {% for col in all_collections %}
+                <option value="{{ col.id }}">{{ col.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-secondary" style="font-size:0.8rem; padding:0.25rem 0.6rem;">Pin to Collection</button>
+        </form>
+    </div>
+</div>
+
+<!-- Header Info Card -->
+<div class="card" style="padding:2rem; margin-bottom:2rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(15, 23, 42, 0.9) 100%); border-left: 4px solid var(--accent-blue);">
+    <h2 style="font-family:'Outfit', sans-serif; font-size:2.2rem; font-weight:700; color:#fff; margin-bottom:0.5rem;">{{ campaign.campaign_name }}</h2>
+    <p style="color:var(--text-muted); font-size:0.95rem; display:flex; gap:1.5rem; flex-wrap:wrap; margin:0;">
+        <span>Candidate: 
+            {% if campaign.candidate %}
+            <a href="/entity/{{ campaign.candidate.public_id }}/" style="color:var(--accent-blue); font-weight:600; text-decoration:none;">{{ campaign.candidate.canonical_name }}</a>
+            {% else %}
+            <span style="color:#fff;">Unlinked</span>
+            {% endif %}
+        </span>
+        <span>Office: <strong style="color:#fff;">{{ campaign.office_sought }}</strong></span>
+        <span>Cycle: <strong style="color:#fff;">{{ campaign.election_cycle }}</strong></span>
+        <span>Year: <strong style="color:#fff;">{{ campaign.election_year }}</strong></span>
+    </p>
+</div>
+
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem;">
+    <!-- Main Left Column -->
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+        
+        <!-- Campaign Finance / Donors -->
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Campaign Donors (Top contributions)</h3>
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>Donor Name</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for donor in donors %}
+                    <tr>
+                        <td>
+                            {% if donor.donor_entity %}
+                            <a href="/entity/{{ donor.donor_entity.public_id }}/">{{ donor.donor_raw_name }}</a>
+                            {% else %}
+                            {{ donor.donor_raw_name }}
+                            {% endif %}
+                        </td>
+                        <td style="font-family:monospace;">{{ donor.transaction_date|date:'Y-m-d'|default:"-" }}</td>
+                        <td style="color:var(--accent-emerald); font-weight:bold; font-family:monospace;">${{ donor.amount|stringformat:".2f" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No donor transactions recorded.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Targeted Independent Expenditures (Form 496) -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <!-- Support Expenditures -->
+            <div class="card" style="border-top: 3px solid var(--accent-emerald);">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Independent Support Expenditures</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Filer</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ie in support_expenditures %}
+                        <tr>
+                            <td><a href="/entity/{{ ie.filer_committee.public_id }}/">{{ ie.filer_committee.canonical_name }}</a></td>
+                            <td style="color:var(--accent-emerald); font-weight:bold; font-family:monospace;">${{ ie.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" style="color:var(--text-muted); font-style:italic; font-size:0.85rem; text-align:center; padding:1rem 0;">No support expenditures.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Oppose Expenditures -->
+            <div class="card" style="border-top: 3px solid var(--accent-rose);">
+                <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Independent Oppose Expenditures</h3>
+                <table style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Filer</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ie in oppose_expenditures %}
+                        <tr>
+                            <td><a href="/entity/{{ ie.filer_committee.public_id }}/">{{ ie.filer_committee.canonical_name }}</a></td>
+                            <td style="color:var(--accent-rose); font-weight:bold; font-family:monospace;">${{ ie.amount|stringformat:".2f" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" style="color:var(--text-muted); font-style:italic; font-size:0.85rem; text-align:center; padding:1rem 0;">No oppose expenditures.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Expenditures / Vendors -->
+        <div class="card">
+            <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Campaign Expenditures & Payments</h3>
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>Payee / Vendor</th>
+                        <th>Code</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exp in expenditures %}
+                    <tr>
+                        <td>
+                            {% if exp.payee_entity %}
+                            <a href="/entity/{{ exp.payee_entity.public_id }}/">{{ exp.payee_raw_name }}</a>
+                            {% else %}
+                            {{ exp.payee_raw_name }}
+                            {% endif %}
+                        </td>
+                        <td><code style="background:rgba(255,255,255,0.05); padding:0.15rem 0.35rem; border-radius:4px;">{{ exp.transaction_code|default:"-" }}</code></td>
+                        <td>{{ exp.description|truncatechars:50 }}</td>
+                        <td style="color:var(--accent-emerald); font-weight:bold; font-family:monospace;">${{ exp.amount|stringformat:".2f" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="color:var(--text-muted); text-align:center; padding:1.5rem 0;">No campaign expenditures recorded.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Right Sidebar Column -->
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+        
+        <!-- Committee & Treasurer Profile Info -->
+        <div class="card" style="border-top: 3px solid var(--accent-emerald);">
+            <h3 style="color:#fff; font-size:1.1rem; margin-bottom:1rem;">Campaign Committee</h3>
+            {% if committee_entity %}
+            <p style="margin:0 0 0.5rem 0;">
+                Committee: <a href="/entity/{{ committee_entity.public_id }}/" style="font-weight:bold; color:var(--accent-blue); text-decoration:none;">{{ committee_entity.canonical_name }}</a>
+            </p>
+            {% if committee_entity.committee_profile.fppc_id %}
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0 0 0.5rem 0;">FPPC ID: <strong>{{ committee_entity.committee_profile.fppc_id }}</strong></p>
+            {% endif %}
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">
+                Treasurer: <strong style="color:#fff;">{{ treasurer|default:"Not Listed" }}</strong>
+            </p>
+            {% else %}
+            <p style="color:var(--text-muted); font-style:italic; margin:0;">No linked committee registry profile.</p>
+            {% endif %}
+        </div>
+
+        <!-- Campaign Consultants -->
+        <div class="card">
+            <h3 style="color:#fff; font-size:1.1rem; margin-bottom:1rem;">Campaign Consultants</h3>
+            <ul style="padding-left:1.25rem; display:flex; flex-direction:column; gap:0.5rem; margin:0;">
+                {% for consultant, relation in consultants %}
+                <li>
+                    <a href="/entity/{{ consultant.public_id }}/" style="font-weight:bold; text-decoration:none; color:var(--accent-blue);">{{ consultant.canonical_name }}</a>
+                    <br/><small style="color:var(--text-muted);">{{ relation }}</small>
+                </li>
+                {% empty %}
+                <li style="color:var(--text-muted); list-style:none; padding-left:0; font-style:italic;">No consultants linked.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Source Filings -->
+        <div class="card">
+            <h3 style="color:#fff; font-size:1.1rem; margin-bottom:1rem;">Source Documents</h3>
+            <ul style="padding-left:1.25rem; display:flex; flex-direction:column; gap:0.5rem; margin:0;">
+                {% for src in sources %}
+                <li>
+                    <a href="/sources/{{ src.id }}/" style="font-size:0.85rem; text-decoration:none; color:var(--accent-blue);">{{ src.title }}</a>
+                </li>
+                {% empty %}
+                <li style="color:var(--text-muted); list-style:none; padding-left:0; font-style:italic;">No source documents.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Related Campaigns -->
+        <div class="card">
+            <h3 style="color:#fff; font-size:1.1rem; margin-bottom:1rem;">Related Campaigns</h3>
+            <ul style="padding-left:1.25rem; display:flex; flex-direction:column; gap:0.5rem; margin:0;">
+                {% for rc in related_campaigns %}
+                <li>
+                    <a href="/campaigns/{{ rc.public_id }}/" style="font-size:0.85rem; text-decoration:none; color:var(--accent-blue);">{{ rc.campaign_name }}</a>
+                    <span style="color:var(--text-muted); font-size:0.85rem;">({{ rc.election_cycle }})</span>
+                </li>
+                {% empty %}
+                <li style="color:var(--text-muted); list-style:none; padding-left:0; font-style:italic;">No other campaigns cataloged.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -14,6 +14,7 @@ urlpatterns = [
     path('collections/add-item/', views.add_item_to_collection, name='add_item_to_collection'),
     path('network/', views.network_explorer, name='network_explorer'),
     path('compare/', views.compare_entities, name='compare_entities'),
+    path('shared-connections/', views.shared_connections, name='shared_connections'),
     path('inventory/download/', views.download_inventory, name='download_inventory'),
     path('methodology/', views.methodology_page, name='methodology_page'),
 ]

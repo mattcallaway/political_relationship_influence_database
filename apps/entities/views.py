@@ -98,6 +98,7 @@ def entity_list(request):
 def entity_detail(request, public_id):
     from apps.research.models import OpenQuestion, EntityMatchCandidate, ResearchCollection
     from apps.transactions.models import AuditEvent
+    from apps.assertions.models import Assertion
     from django.db.models import Q
     
     entity = get_object_or_404(Entity, public_id=public_id)
@@ -244,6 +245,28 @@ def entity_detail(request, public_id):
     import datetime
     timeline.sort(key=lambda x: x['date'] or datetime.date.today(), reverse=True)
     
+    # Compute consultant/business relationship networks
+    vendor_payments_total = sum(float(e.amount) for e in expenditures_received)
+    
+    consultant_campaigns = set()
+    for e in expenditures_received:
+        if e.campaign:
+            consultant_campaigns.add(e.campaign)
+            
+    consultant_camps = Assertion.objects.filter(
+        subject_entity=entity,
+        predicate__in=['CONSULTANT_TO', 'CAMPAIGN_MANAGER_FOR']
+    )
+    for ast in consultant_camps:
+        from apps.campaigns.models import Campaign
+        camp = Campaign.objects.filter(entity=ast.object_entity).first()
+        if camp:
+            consultant_campaigns.add(camp)
+            
+    retained_lobbyists = []
+    if entity.entity_type == 'ORGANIZATION':
+        retained_lobbyists = [lob.lobbyist_entity for lob in lobbying_as_client]
+        
     return render(request, 'entities/entity_detail.html', {
         'entity': entity,
         'person': person,
@@ -275,7 +298,10 @@ def entity_detail(request, public_id):
         'source_count': source_count,
         'assertion_count': assertion_count,
         'transaction_count': transaction_count,
-        'total_financial_volume': total_financial_volume
+        'total_financial_volume': total_financial_volume,
+        'vendor_payments_total': vendor_payments_total,
+        'consultant_campaigns': list(consultant_campaigns),
+        'retained_lobbyists': retained_lobbyists
     })
 
 def unified_search(request):

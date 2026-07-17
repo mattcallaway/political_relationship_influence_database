@@ -15,6 +15,7 @@ urlpatterns = [
     path('exports/', include('apps.exports.urls')),
     path('government/', include('apps.government.urls')),
     path('projects/', include('apps.projects.urls')),
+    path('campaigns/', include('apps.campaigns.urls')),
 ]
 
 if settings.DEBUG:

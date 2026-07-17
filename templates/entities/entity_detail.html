@@ -167,20 +167,70 @@
                 <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.1rem; color:#fff;">Profile Details</h3>
                 
                 {% if person %}
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                <!-- INDIVIDUAL PROFILE -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.5rem;">
                     <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">DISPLAY NAME</span><strong>{{ person.display_name }}</strong></div>
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">OCCUPATION / EMPLOYER</span><strong>{{ person.occupation|default:"Unspecified" }}</strong></div>
                     <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">PUBLIC ROLE</span><strong>{{ person.public_role|default:"None documented" }}</strong></div>
-                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">OCCUPATION</span><strong>{{ person.occupation|default:"Unspecified" }}</strong></div>
-                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">BIOGRAPHY NOTES</span><p style="margin-top:0.25rem; font-size:0.9rem; color:#cbd5e1;">{{ person.notes|default:"No notes cataloged." }}</p></div>
+                    <div>
+                        <span style="font-size:0.75rem; color:var(--text-muted); display:block;">CAMPAIGN & CONSULTING NETWORKS</span>
+                        {% if consultant_campaigns %}
+                        <div style="margin-top:0.25rem; display:flex; flex-direction:column; gap:0.25rem;">
+                            {% for camp in consultant_campaigns %}
+                            <a href="/campaigns/{{ camp.public_id }}/" style="font-size:0.85rem; color:var(--accent-blue);">{{ camp.campaign_name }}</a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <span style="color:var(--text-muted); font-size:0.85rem;">No direct consulting campaign links</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <span style="font-size:0.75rem; color:var(--text-muted); display:block;">BIOGRAPHY NOTES</span>
+                    <p style="margin-top:0.25rem; font-size:0.9rem; color:#cbd5e1;">{{ person.notes|default:"No notes cataloged." }}</p>
                 </div>
                 {% endif %}
 
                 {% if org %}
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                <!-- BUSINESS / ORGANIZATION / COMMITTEE PROFILE -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.5rem;">
                     <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">LEGAL NAME</span><strong>{{ org.legal_name }}</strong></div>
                     <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">CATEGORY</span><strong>{{ org.get_org_category_display }}</strong></div>
-                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">FPPC ID</span><strong>{{ org.committee_id|default:"N/A" }}</strong></div>
-                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">DESCRIPTION</span><p style="margin-top:0.25rem; font-size:0.9rem; color:#cbd5e1;">{{ org.notes|default:"No description registered." }}</p></div>
+                    
+                    {% if org.committee_id %}
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">COMMITTEE FPPC ID</span><strong>{{ org.committee_id }}</strong></div>
+                    {% endif %}
+                    
+                    {% if vendor_payments_total > 0 %}
+                    <div><span style="font-size:0.75rem; color:var(--text-muted); display:block;">TOTAL CAMPAIGN PAYMENTS RECEIVED</span><strong style="color:var(--accent-emerald); font-family:monospace;">${{ vendor_payments_total|stringformat:".2f" }}</strong></div>
+                    {% endif %}
+                </div>
+
+                {% if consultant_campaigns %}
+                <div style="margin-bottom:1.5rem;">
+                    <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">CAMPAIGNS SERVED</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                        {% for camp in consultant_campaigns %}
+                        <a href="/campaigns/{{ camp.public_id }}/" class="badge badge-verified" style="text-decoration:none;">{{ camp.campaign_name }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if retained_lobbyists %}
+                <div style="margin-bottom:1.5rem;">
+                    <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">RETAINED LOBBYING FIRMS</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                        {% for lobbyist in retained_lobbyists %}
+                        <a href="/entity/{{ lobbyist.public_id }}/" class="badge" style="background:#1e293b; color:#fff; text-decoration:none;">{{ lobbyist.canonical_name }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div>
+                    <span style="font-size:0.75rem; color:var(--text-muted); display:block;">DESCRIPTION</span>
+                    <p style="margin-top:0.25rem; font-size:0.9rem; color:#cbd5e1;">{{ org.notes|default:"No description registered." }}</p>
                 </div>
                 {% endif %}
 
@@ -474,6 +524,35 @@
 
     <!-- TAB 5: LOBBYING & BOARD APPOINTMENTS -->
     <div id="tab-lobbying" class="tab-content">
+        {% if lobbying_as_firm and consultant_campaigns %}
+        <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--accent-amber); background: rgba(245, 158, 11, 0.05);">
+            <h4 style="color:var(--accent-amber); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                ⚠️ Potential Campaign & Client Representation Intersections
+            </h4>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 1rem 0;">
+                This entity has documented records acting both as a campaign consultant/manager AND representing private corporate clients as a lobbying firm in the same region.
+            </p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; font-size:0.85rem;">
+                <div>
+                    <strong style="color:#fff; display:block; margin-bottom:0.25rem;">Campaigns Advised/Managed:</strong>
+                    <ul style="padding-left:1.25rem; margin:0;">
+                        {% for camp in consultant_campaigns %}
+                        <li><a href="/campaigns/{{ camp.public_id }}/" style="color:var(--accent-blue);">{{ camp.campaign_name }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div>
+                    <strong style="color:#fff; display:block; margin-bottom:0.25rem;">Lobbying Clients Represented:</strong>
+                    <ul style="padding-left:1.25rem; margin:0;">
+                        {% for lob in lobbying_as_firm %}
+                        <li><a href="/entity/{{ lob.client_entity.public_id }}/" style="color:var(--accent-blue);">{{ lob.client_entity.canonical_name }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
             <!-- Lobbying Activities -->
             <div class="card">

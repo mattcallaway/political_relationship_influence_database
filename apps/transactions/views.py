@@ -65,6 +65,8 @@ def expenditure_list(request):
     cycle = request.GET.get('cycle', '').strip()
     min_amount = request.GET.get('min_amount', '').strip()
     max_amount = request.GET.get('max_amount', '').strip()
+    campaign_filter = request.GET.get('campaign', '').strip()
+    status_filter = request.GET.get('status', '').strip()
     export = request.GET.get('export', '')
 
     expenditures = Expenditure.objects.all().order_by('-transaction_date', '-amount')
@@ -91,6 +93,11 @@ def expenditure_list(request):
         except ValueError:
             pass
 
+    if campaign_filter:
+        expenditures = expenditures.filter(campaign_id=campaign_filter)
+    if status_filter:
+        expenditures = expenditures.filter(review_status=status_filter)
+
     if export == 'csv':
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="expenditures.csv"'
@@ -115,7 +122,9 @@ def expenditure_list(request):
         'code': code,
         'cycle': cycle,
         'min_amount': min_amount,
-        'max_amount': max_amount
+        'max_amount': max_amount,
+        'campaign_filter': campaign_filter,
+        'status_filter': status_filter
     })
 
 def expenditure_detail(request, expenditure_id):

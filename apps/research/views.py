@@ -277,6 +277,26 @@ def data_quality(request):
             affected_object_id=str(ap.id)
         )
 
+    # 11. Payees missing entity links
+    payees_missing_links = Expenditure.objects.filter(payee_entity=None)
+    for exp in payees_missing_links[:5]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Payee Missing Entity Link",
+            description=f"Expenditure '{exp.public_id}' to '{exp.payee_raw_name}' lacks a normalized payee entity association.",
+            affected_object_type="Expenditure",
+            affected_object_id=str(exp.id)
+        )
+        
+    # 12. Consultants missing campaign links
+    consultants_missing_camps = Expenditure.objects.filter(transaction_code='CNS', campaign=None)
+    for exp in consultants_missing_camps[:5]:
+        DataQualityIssue.objects.get_or_create(
+            issue_type="Consultant Missing Campaign Link",
+            description=f"Consultant expenditure '{exp.public_id}' to '{exp.payee_raw_name}' is not associated with a specific Campaign.",
+            affected_object_type="Expenditure",
+            affected_object_id=str(exp.id)
+        )
+
     issues = DataQualityIssue.objects.all().order_by('is_resolved', 'issue_type')
     return render(request, 'research/data_quality.html', {
         'issues': issues
@@ -315,6 +335,20 @@ def collection_list(request):
         col.entities.add(muelrath_firm)
         for ent in Entity.objects.exclude(id__in=[muelrath_person.id, muelrath_firm.id])[:6]:
             col.entities.add(ent)
+            
+    # Pre-seed other Muelrath collections
+    ResearchCollection.objects.get_or_create(
+        name="Campaigns served by Muelrath",
+        defaults={
+            'description': 'Political campaigns, candidate committees, and ballot measures managed or advised by Robert Muelrath or Muelrath Public Affairs.'
+        }
+    )
+    ResearchCollection.objects.get_or_create(
+        name="Businesses or industries connected through Muelrath payments/clients",
+        defaults={
+            'description': 'Private sector firms, client corporations, and industry trade associations connected to Muelrath Public Affairs through payments or strategic representation.'
+        }
+    )
             
     collections = ResearchCollection.objects.all()
     return render(request, 'research/collection_list.html', {
@@ -754,3 +788,73 @@ def add_item_to_collection(request):
 
 def methodology_page(request):
     return render(request, 'research/methodology.html')
+
+def shared_connections(request):
+    from apps.entities.models import Entity
+    from apps.campaigns.models import Campaign, Committee
+    from apps.transactions.models import Contribution, Expenditure
+    from django.db.models import Count, Q
+    
+    # 1. Campaigns sharing consultants
+    shared_consultants = Expenditure.objects.filter(
+        transaction_code='CNS',
+        payee_entity__isnull=False
+    ).values('payee_entity__canonical_name', 'payee_entity__public_id').annotate(
+        campaign_count=Count('filer_committee__campaigns_funded', distinct=True)
+    ).filter(campaign_count__gt=1).order_by('-campaign_count')
+    
+    consultant_groups = []
+    for sc in shared_consultants:
+        payee_id = sc['payee_entity__public_id']
+        camps = Campaign.objects.filter(
+            committee__expenditures_made__payee_entity__public_id=payee_id
+        ).distinct()
+        consultant_groups.append({
+            'consultant_name': sc['payee_entity__canonical_name'],
+            'consultant_id': payee_id,
+            'campaigns': camps
+        })
+        
+    # 2. Campaigns sharing vendors
+    shared_vendors = Expenditure.objects.filter(
+        payee_entity__isnull=False
+    ).values('payee_entity__canonical_name', 'payee_entity__public_id').annotate(
+        campaign_count=Count('filer_committee__campaigns_funded', distinct=True)
+    ).filter(campaign_count__gt=1).order_by('-campaign_count')
+    
+    vendor_groups = []
+    for sv in shared_vendors[:15]:
+        payee_id = sv['payee_entity__public_id']
+        camps = Campaign.objects.filter(
+            committee__expenditures_made__payee_entity__public_id=payee_id
+        ).distinct()
+        vendor_groups.append({
+            'vendor_name': sv['payee_entity__canonical_name'],
+            'vendor_id': payee_id,
+            'campaigns': camps
+        })
+        
+    # 3. Campaigns sharing major donors
+    shared_donors = Contribution.objects.filter(
+        donor_entity__isnull=False
+    ).values('donor_entity__canonical_name', 'donor_entity__public_id').annotate(
+        campaign_count=Count('filer_committee__campaigns_funded', distinct=True)
+    ).filter(campaign_count__gt=1).order_by('-campaign_count')
+    
+    donor_groups = []
+    for sd in shared_donors[:15]:
+        donor_id = sd['donor_entity__public_id']
+        camps = Campaign.objects.filter(
+            committee__contributions_received__donor_entity__public_id=donor_id
+        ).distinct()
+        donor_groups.append({
+            'donor_name': sd['donor_entity__canonical_name'],
+            'donor_id': donor_id,
+            'campaigns': camps
+        })
+
+    return render(request, 'research/shared_connections.html', {
+        'consultant_groups': consultant_groups,
+        'vendor_groups': vendor_groups,
+        'donor_groups': donor_groups
+    })

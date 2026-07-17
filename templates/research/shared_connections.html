@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Shared Campaign Connections - Sonoma Civic Platform{% endblock %}
+
+{% block breadcrumbs %}Research &rsaquo; Shared Connections{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(30, 41, 59, 0.8) 100%);">
+    <h2 style="font-family:'Outfit', sans-serif; font-weight:700; color:#fff; margin-bottom:0.5rem;">Shared Connections & Infrastructure Analyzer</h2>
+    <p style="color:var(--text-muted); font-size:0.9rem;">Identify campaign networks, shared vendor agreements, recurring strategic consultants, and overlapping contributor pools across Sonoma County election cycles.</p>
+</div>
+
+<!-- Tab System Navigation -->
+<div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+    <button class="btn btn-secondary" onclick="switchSection('sec-consultants')" id="btn-sec-consultants" style="font-size:0.85rem; border-bottom: 2px solid var(--accent-blue);">Shared Consultants</button>
+    <button class="btn btn-secondary" onclick="switchSection('sec-vendors')" id="btn-sec-vendors" style="font-size:0.85rem;">Shared Vendors</button>
+    <button class="btn btn-secondary" onclick="switchSection('sec-donors')" id="btn-sec-donors" style="font-size:0.85rem;">Shared Major Donors</button>
+</div>
+
+<!-- SECTION 1: SHARED CONSULTANTS -->
+<div id="sec-consultants" class="shared-section">
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.15rem; color:#fff;">Shared Strategy Consultants</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">Consulting firms or strategic managers working across multiple local political committees.</p>
+        
+        <div style="display:flex; flex-direction:column; gap:1.25rem;">
+            {% for group in consultant_groups %}
+            <div style="padding:1rem; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+                <h4 style="font-size:1.1rem; margin-bottom:0.75rem;">
+                    Consultant: <a href="/entity/{{ group.consultant_id }}/" style="color:var(--accent-blue); text-decoration:none; font-weight:700;">{{ group.consultant_name }}</a>
+                </h4>
+                <div style="display:flex; flex-direction:column; gap:0.4rem; padding-left:1rem; border-left:3px solid var(--accent-blue);">
+                    <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">Campaigns Served</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                        {% for camp in group.campaigns %}
+                        <a href="/campaigns/{{ camp.public_id }}/" class="badge badge-verified" style="text-decoration:none;">{{ camp.campaign_name }} ({{ camp.election_cycle }})</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:var(--text-muted); text-align:center; padding:2rem 0; font-style:italic;">No shared campaign consultants discovered in active databases.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- SECTION 2: SHARED VENDORS -->
+<div id="sec-vendors" class="shared-section" style="display:none;">
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.15rem; color:#fff;">Shared Campaign Vendors</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">Printers, designers, mail house companies, and media vendors appearing together across campaigns.</p>
+        
+        <div style="display:flex; flex-direction:column; gap:1.25rem;">
+            {% for group in vendor_groups %}
+            <div style="padding:1rem; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+                <h4 style="font-size:1.1rem; margin-bottom:0.75rem;">
+                    Vendor: <a href="/entity/{{ group.vendor_id }}/" style="color:var(--accent-blue); text-decoration:none; font-weight:700;">{{ group.vendor_name }}</a>
+                </h4>
+                <div style="display:flex; flex-direction:column; gap:0.4rem; padding-left:1rem; border-left:3px solid var(--accent-emerald);">
+                    <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">Campaigns Served</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                        {% for camp in group.campaigns %}
+                        <a href="/campaigns/{{ camp.public_id }}/" class="badge badge-verified" style="text-decoration:none;">{{ camp.campaign_name }} ({{ camp.election_cycle }})</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:var(--text-muted); text-align:center; padding:2rem 0; font-style:italic;">No shared vendors discovered in active databases.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- SECTION 3: SHARED DONORS -->
+<div id="sec-donors" class="shared-section" style="display:none;">
+    <div class="card">
+        <h3 style="margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem; font-size:1.15rem; color:#fff;">Shared Major Donors</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">Businesses, unions, and individual contributors funding multiple candidates or ballot measures.</p>
+        
+        <div style="display:flex; flex-direction:column; gap:1.25rem;">
+            {% for group in donor_groups %}
+            <div style="padding:1rem; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+                <h4 style="font-size:1.1rem; margin-bottom:0.75rem;">
+                    Donor: <a href="/entity/{{ group.donor_id }}/" style="color:var(--accent-blue); text-decoration:none; font-weight:700;">{{ group.donor_name }}</a>
+                </h4>
+                <div style="display:flex; flex-direction:column; gap:0.4rem; padding-left:1rem; border-left:3px solid var(--accent-amber);">
+                    <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">Campaigns Funded</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                        {% for camp in group.campaigns %}
+                        <a href="/campaigns/{{ camp.public_id }}/" class="badge badge-verified" style="text-decoration:none;">{{ camp.campaign_name }} ({{ camp.election_cycle }})</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color:var(--text-muted); text-align:center; padding:2rem 0; font-style:italic;">No shared donors discovered in active databases.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchSection(sectionId) {
+        // Hide all sections
+        var sections = document.getElementsByClassName('shared-section');
+        for (var i = 0; i < sections.length; i++) {
+            sections[i].style.display = 'none';
+        }
+        
+        // Show target section
+        document.getElementById(sectionId).style.display = 'block';
+        
+        // Toggle active border styles on buttons
+        var buttons = ['btn-sec-consultants', 'btn-sec-vendors', 'btn-sec-donors'];
+        buttons.forEach(function(id) {
+            var btn = document.getElementById(id);
+            if (id === 'btn-' + sectionId) {
+                btn.style.borderBottom = '2px solid var(--accent-blue)';
+            } else {
+                btn.style.borderBottom = 'none';
+            }
+        });
+    }
+</script>
+{% endblock %}
